@@ -35,11 +35,15 @@ class RateLimiter:
         if len(self._timestamps) >= self.max_requests:
             oldest = self._timestamps[0]
             wait = int(oldest + self.window_seconds - now) + 1
-            window_desc = (
-                f"{self.window_seconds // 3600} hour(s)"
-                if self.window_seconds >= 3600
-                else f"{self.window_seconds} seconds"
-            )
+            if self.window_seconds >= 3600:
+                hours = self.window_seconds / 3600
+                if hours == int(hours):
+                    hours = int(hours)
+                    window_desc = f"{hours} {'hour' if hours == 1 else 'hours'}"
+                else:
+                    window_desc = f"{self.window_seconds // 60} minutes"
+            else:
+                window_desc = f"{self.window_seconds} seconds"
             return (
                 f"Rate limit reached ({self.max_requests} requests per {window_desc}). "
                 f"Try again in ~{wait} seconds."

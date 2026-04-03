@@ -53,6 +53,25 @@ class TestRateLimiter:
         assert "60 seconds" in msg
         assert "per hour" not in msg
 
+    def test_message_reflects_window_hours(self):
+        rl = RateLimiter(max_requests=1, window_seconds=3600)
+        rl.record()
+        msg = rl.check()
+        assert "1 hour" in msg
+        assert "hour(s)" not in msg  # no awkward "hour(s)"
+
+    def test_message_reflects_window_multiple_hours(self):
+        rl = RateLimiter(max_requests=1, window_seconds=7200)
+        rl.record()
+        msg = rl.check()
+        assert "2 hours" in msg
+
+    def test_message_reflects_window_non_round_hours(self):
+        rl = RateLimiter(max_requests=1, window_seconds=5400)  # 90 minutes
+        rl.record()
+        msg = rl.check()
+        assert "90 minutes" in msg
+
     def test_record_appends_timestamp(self):
         rl = RateLimiter()
         assert len(rl._timestamps) == 0
