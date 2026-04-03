@@ -189,7 +189,10 @@ def _clear_cache(expired_only: bool) -> str:
                 shutil.rmtree(collection_dir)
             except OSError:
                 pass
-            info_file.unlink(missing_ok=True)
+            try:
+                info_file.unlink(missing_ok=True)
+            except OSError:
+                pass
 
     action = "expired entries" if expired_only else "all entries"
     result = {
