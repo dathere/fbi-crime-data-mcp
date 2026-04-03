@@ -6,9 +6,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ..constants import CACHE_DIR as _CACHE_DIR
 from ..server import mcp
-
-_CACHE_DIR = Path.home() / ".cache" / "fbi-crime-data-mcp"
 
 
 @mcp.tool()
@@ -64,7 +63,10 @@ def _cache_status() -> str:
             except (json.JSONDecodeError, OSError):
                 continue
 
-            file_size = entry_file.stat().st_size
+            try:
+                file_size = entry_file.stat().st_size
+            except OSError:
+                continue
             col_bytes += file_size
 
             created_str = entry.get("created_at")
@@ -145,8 +147,11 @@ def _clear_cache(expired_only: bool) -> str:
                     kept += 1
                     continue
 
-            freed_bytes += entry_file.stat().st_size
-            entry_file.unlink()
+            try:
+                freed_bytes += entry_file.stat().st_size
+                entry_file.unlink()
+            except OSError:
+                continue
             removed += 1
 
         if not expired_only:
