@@ -71,6 +71,10 @@ def filter_agencies_by_name(raw_json: str, name_filter: str) -> str:
         return json.dumps(filtered, indent=2)
 
     if isinstance(data, dict):
+        # Only filter if this is actually a dict-of-arrays; pass through otherwise
+        has_list_groups = any(isinstance(v, list) for v in data.values())
+        if not has_list_groups:
+            return raw_json
         filtered = {}
         for group, agencies in data.items():
             if not isinstance(agencies, list):
