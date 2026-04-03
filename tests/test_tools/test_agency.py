@@ -1,11 +1,8 @@
 """Tests for lookup_agency tool."""
 
-import pytest
-
 from fbi_crime_data_mcp.tools.agency import lookup_agency
 
 
-@pytest.mark.asyncio
 class TestLookupAgency:
     async def test_invalid_lookup_type(self, ctx):
         r = await lookup_agency("invalid", ctx=ctx)

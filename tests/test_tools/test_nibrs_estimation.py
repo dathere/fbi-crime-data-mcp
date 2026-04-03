@@ -1,11 +1,8 @@
 """Tests for get_nibrs_estimation tool."""
 
-import pytest
-
 from fbi_crime_data_mcp.tools.nibrs_estimation import get_nibrs_estimation
 
 
-@pytest.mark.asyncio
 class TestNibrsEstimation:
     async def test_invalid_offense(self, ctx):
         r = await get_nibrs_estimation("INVALID", "national", 2022, ctx=ctx)

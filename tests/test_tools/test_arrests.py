@@ -1,11 +1,8 @@
 """Tests for get_arrest_data tool."""
 
-import pytest
-
 from fbi_crime_data_mcp.tools.arrests import get_arrest_data
 
 
-@pytest.mark.asyncio
 class TestArrestData:
     async def test_invalid_offense(self, ctx):
         r = await get_arrest_data("INVALID", "national", "counts", "01-2020", "12-2020", ctx=ctx)

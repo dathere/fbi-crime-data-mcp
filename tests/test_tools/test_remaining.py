@@ -1,7 +1,5 @@
 """Tests for remaining tools: trends, employment, hate_crime, homicide, property_data, leoka, lesdc, reference, use_of_force."""
 
-import pytest
-
 from fbi_crime_data_mcp.tools.trends import get_crime_trends
 from fbi_crime_data_mcp.tools.employment import get_police_employment
 from fbi_crime_data_mcp.tools.hate_crime import get_hate_crime_data
@@ -16,7 +14,6 @@ from fbi_crime_data_mcp.tools.use_of_force import get_use_of_force_data
 # ── Crime Trends ─────────────────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
 class TestCrimeTrends:
     async def test_no_params(self, ctx, app_ctx):
         await get_crime_trends(ctx=ctx)
@@ -40,7 +37,6 @@ class TestCrimeTrends:
 # ── Police Employment ────────────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
 class TestPoliceEmployment:
     async def test_invalid_level(self, ctx):
         r = await get_police_employment("city", "2015", "2022", ctx=ctx)
@@ -88,7 +84,6 @@ class TestPoliceEmployment:
 # ── Hate Crime ───────────────────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
 class TestHateCrime:
     async def test_invalid_level(self, ctx):
         r = await get_hate_crime_data("city", "01-2020", "12-2020", ctx=ctx)
@@ -142,7 +137,6 @@ class TestHateCrime:
 # ── Expanded Homicide ────────────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
 class TestHomicide:
     async def test_invalid_level(self, ctx):
         r = await get_expanded_homicide_data("city", "counts", "01-2020", "12-2020", ctx=ctx)
@@ -186,7 +180,6 @@ class TestHomicide:
 # ── Expanded Property Data ───────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
 class TestPropertyData:
     async def test_invalid_offense(self, ctx):
         r = await get_expanded_property_data("INVALID", "national", "counts", "01-2020", "12-2020", ctx=ctx)
@@ -228,7 +221,6 @@ class TestPropertyData:
 # ── LEOKA ────────────────────────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
 class TestLeoka:
     async def test_invalid_report_type(self, ctx):
         r = await get_leoka_data("invalid", 2022, ctx=ctx)
@@ -266,7 +258,6 @@ class TestLeoka:
 # ── LESDC ────────────────────────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
 class TestLesdc:
     async def test_invalid_chart_type(self, ctx):
         r = await get_lesdc_data(2022, "invalid", ctx=ctx)
@@ -282,7 +273,6 @@ class TestLesdc:
 # ── Reference Data ───────────────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
 class TestReferenceData:
     async def test_invalid_data_type(self, ctx):
         r = await get_reference_data("invalid", ctx=ctx)
@@ -316,7 +306,6 @@ class TestReferenceData:
 # ── Use of Force ─────────────────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
 class TestUseOfForce:
     async def test_invalid_report_type(self, ctx):
         r = await get_use_of_force_data("invalid", ctx=ctx)

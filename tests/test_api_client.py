@@ -38,6 +38,12 @@ class TestRateLimiter:
         rl._timestamps[0] = time.monotonic() - 2
         assert rl.check() is None  # old timestamp expired
 
+    def test_zero_max_requests_empty_deque(self):
+        rl = RateLimiter(max_requests=0)
+        msg = rl.check()
+        assert msg is not None
+        assert "Rate limit reached" in msg
+
     def test_record_appends_timestamp(self):
         rl = RateLimiter()
         assert len(rl._timestamps) == 0
@@ -66,7 +72,7 @@ class TestGetApiKey:
 
 
 @pytest.fixture
-def mock_client():
+async def mock_client():
     """Return a respx-mocked httpx.AsyncClient."""
     with respx.mock(base_url="https://api.usa.gov/crime/fbi/cde") as mock:
         client = httpx.AsyncClient(
@@ -75,9 +81,9 @@ def mock_client():
             timeout=5.0,
         )
         yield client, mock
+        await client.aclose()
 
 
-@pytest.mark.asyncio
 class TestApiGet:
     async def test_successful_json_response(self, mock_client):
         client, mock = mock_client

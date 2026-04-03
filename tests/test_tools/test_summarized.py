@@ -1,11 +1,8 @@
 """Tests for get_summarized_crime_data tool."""
 
-import pytest
-
 from fbi_crime_data_mcp.tools.summarized import get_summarized_crime_data
 
 
-@pytest.mark.asyncio
 class TestSummarizedCrimeData:
     async def test_invalid_offense(self, ctx):
         r = await get_summarized_crime_data("INVALID", "national", "01-2020", "12-2020", ctx=ctx)
