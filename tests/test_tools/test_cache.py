@@ -87,3 +87,47 @@ class TestManageCache:
         monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path / "nonexistent")
         r = await manage_cache("status")
         assert "does not exist" in r
+
+    async def test_empty_directory_in_info_skipped(self, tmp_path, monkeypatch):
+        """Info file with empty directory should not scan CWD."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        info = {"version": 1, "collection": "bad", "directory": ""}
+        (tmp_path / "S_bad-info.json").write_text(json.dumps(info))
+        r = await manage_cache("status")
+        data = json.loads(r)
+        assert data["total_entries"] == 0
+
+    async def test_directory_outside_cache_skipped(self, tmp_path, monkeypatch):
+        """Info file pointing outside cache dir should be ignored."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        info = {"version": 1, "collection": "escape", "directory": "/tmp"}
+        (tmp_path / "S_escape-info.json").write_text(json.dumps(info))
+        r = await manage_cache("status")
+        data = json.loads(r)
+        assert data["total_entries"] == 0
+
+    async def test_naive_datetime_handled(self, tmp_path, monkeypatch):
+        """Naive ISO datetimes (no timezone) should not crash comparisons."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        col_dir = tmp_path / "S_naive-abc"
+        col_dir.mkdir()
+        info = {"version": 1, "collection": "naive", "directory": str(col_dir)}
+        (tmp_path / "S_naive-abc-info.json").write_text(json.dumps(info))
+        # Naive datetime (no +00:00 suffix), expired
+        entry = {
+            "version": 1,
+            "created_at": "2020-01-01T00:00:00",
+            "expires_at": "2020-02-01T00:00:00",
+            "value": {},
+        }
+        (col_dir / "naive_entry.json").write_text(json.dumps(entry))
+        r = await manage_cache("status")
+        data = json.loads(r)
+        assert data["total_entries"] == 1
+        assert data["expired_entries"] == 1

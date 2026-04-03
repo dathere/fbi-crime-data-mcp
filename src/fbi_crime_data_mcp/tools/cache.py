@@ -10,6 +10,34 @@ from ..constants import CACHE_DIR as _CACHE_DIR
 from ..server import mcp
 
 
+def _parse_aware_dt(iso_str: str) -> datetime:
+    """Parse an ISO datetime string, assuming UTC if naive."""
+    dt = datetime.fromisoformat(iso_str)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _safe_collection_dir(info: dict) -> Path | None:
+    """Extract and validate a collection directory from an info dict.
+
+    Returns None if the directory is missing, empty, not under _CACHE_DIR,
+    or doesn't exist.
+    """
+    raw = info.get("directory")
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    collection_dir = Path(raw)
+    try:
+        resolved = collection_dir.resolve()
+        resolved.relative_to(_CACHE_DIR.resolve())
+    except (OSError, ValueError):
+        return None
+    if not resolved.is_dir():
+        return None
+    return resolved
+
+
 @mcp.tool()
 async def manage_cache(action: str) -> str:
     """Manage the FBI Crime Data response cache.
@@ -49,8 +77,8 @@ def _cache_status() -> str:
             continue
 
         collection_name = info.get("collection", info_file.stem)
-        collection_dir = Path(info.get("directory", ""))
-        if not collection_dir.exists():
+        collection_dir = _safe_collection_dir(info)
+        if collection_dir is None:
             continue
 
         col_total = 0
@@ -74,7 +102,7 @@ def _cache_status() -> str:
 
             if created_str:
                 try:
-                    created = datetime.fromisoformat(created_str)
+                    created = _parse_aware_dt(created_str)
                     if oldest is None or created < oldest:
                         oldest = created
                     if newest is None or created > newest:
@@ -85,7 +113,7 @@ def _cache_status() -> str:
             col_total += 1
             if expires_str:
                 try:
-                    expires_at = datetime.fromisoformat(expires_str)
+                    expires_at = _parse_aware_dt(expires_str)
                     if expires_at <= now:
                         col_expired += 1
                 except ValueError:
@@ -127,8 +155,8 @@ def _clear_cache(expired_only: bool) -> str:
         except (json.JSONDecodeError, OSError):
             continue
 
-        collection_dir = Path(info.get("directory", ""))
-        if not collection_dir.exists():
+        collection_dir = _safe_collection_dir(info)
+        if collection_dir is None:
             continue
 
         for entry_file in collection_dir.glob("*.json"):
@@ -139,7 +167,7 @@ def _clear_cache(expired_only: bool) -> str:
                     if not expires_str:
                         kept += 1
                         continue
-                    expires_at = datetime.fromisoformat(expires_str)
+                    expires_at = _parse_aware_dt(expires_str)
                     if expires_at > now:
                         kept += 1
                         continue
