@@ -8,7 +8,8 @@ from collections import defaultdict
 
 _MM_YYYY_RE = re.compile(r"^(\d{2})-(\d{4})$")
 
-# Subsection names where values should be averaged (rates) or taken as-is (populations)
+# Subsection names where values should be averaged (rates) or use the last
+# observed monthly value when collapsed to yearly data (populations)
 _RATE_KEYS = {"rates"}
 _POPULATION_KEYS = {"population"}
 
