@@ -72,6 +72,12 @@ class TestRateLimiter:
         msg = rl.check()
         assert "90 minutes" in msg
 
+    def test_message_reflects_window_odd_seconds(self):
+        rl = RateLimiter(max_requests=1, window_seconds=3700)  # not divisible by 60
+        rl.record()
+        msg = rl.check()
+        assert "3700 seconds" in msg
+
     def test_record_appends_timestamp(self):
         rl = RateLimiter()
         assert len(rl._timestamps) == 0
