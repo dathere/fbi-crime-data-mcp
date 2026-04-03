@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 from .constants import BASE_URL
 

@@ -1,6 +1,6 @@
 """LESDC (Law Enforcement Suicide Data Collection) tool."""
 
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import LESDC_CHART_TYPES
@@ -24,5 +24,5 @@ async def get_lesdc_data(
     if chart_type not in LESDC_CHART_TYPES:
         return f"Invalid chart_type '{chart_type}'. Valid values: {_chart_list}"
 
-    app_ctx: AppContext = ctx.request_context.lifespan_context
+    app_ctx: AppContext = ctx.lifespan_context
     return await app_ctx.api_get("/lesdc", {"year": str(year), "chartType": chart_type})

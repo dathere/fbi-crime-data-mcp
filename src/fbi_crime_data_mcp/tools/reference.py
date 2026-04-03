@@ -1,6 +1,6 @@
 """Reference and metadata tools."""
 
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from ..api_client import AppContext
 from ..server import mcp
@@ -36,5 +36,5 @@ async def get_reference_data(
         path = "/refresh-date"
         params = {}
 
-    app_ctx: AppContext = ctx.request_context.lifespan_context
+    app_ctx: AppContext = ctx.lifespan_context
     return await app_ctx.api_get(path, params)

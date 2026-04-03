@@ -1,6 +1,6 @@
 """Agency lookup tool."""
 
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import US_STATES
@@ -45,5 +45,5 @@ async def lookup_agency(
             return "Parameter 'district_code' is required for by_district lookup."
         path = f"/agency/byDistCode/{district_code}"
 
-    app_ctx: AppContext = ctx.request_context.lifespan_context
+    app_ctx: AppContext = ctx.lifespan_context
     return await app_ctx.api_get(path)

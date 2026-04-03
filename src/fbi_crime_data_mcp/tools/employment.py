@@ -1,6 +1,6 @@
 """Police employment (PE) data tool."""
 
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import US_STATES
@@ -49,5 +49,5 @@ async def get_police_employment(
     else:
         path = "/pe"
 
-    app_ctx: AppContext = ctx.request_context.lifespan_context
+    app_ctx: AppContext = ctx.lifespan_context
     return await app_ctx.api_get(path, {"from": from_year, "to": to_year})

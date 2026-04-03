@@ -1,6 +1,6 @@
 """Hate crime data tool."""
 
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import BIAS_CODES, US_STATES
@@ -52,5 +52,5 @@ async def get_hate_crime_data(
     if bias:
         path += f"/{bias}"
 
-    app_ctx: AppContext = ctx.request_context.lifespan_context
+    app_ctx: AppContext = ctx.lifespan_context
     return await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})

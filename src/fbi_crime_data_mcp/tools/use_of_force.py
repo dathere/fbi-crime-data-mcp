@@ -1,6 +1,6 @@
 """Use of Force (UOF) data tool."""
 
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import US_STATES
@@ -30,7 +30,7 @@ async def get_use_of_force_data(
     if report_type not in ("summary", "questions", "reports"):
         return "Invalid report_type. Must be 'summary', 'questions', or 'reports'."
 
-    app_ctx: AppContext = ctx.request_context.lifespan_context
+    app_ctx: AppContext = ctx.lifespan_context
 
     if report_type == "summary":
         if year is None or not location:

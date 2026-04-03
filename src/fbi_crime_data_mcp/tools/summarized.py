@@ -1,6 +1,6 @@
 """Summarized (SRS) crime data tool."""
 
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import SRS_OFFENSES, US_STATES
@@ -47,5 +47,5 @@ async def get_summarized_crime_data(
     else:
         path = f"/summarized/national/{offense}"
 
-    app_ctx: AppContext = ctx.request_context.lifespan_context
+    app_ctx: AppContext = ctx.lifespan_context
     return await app_ctx.api_get(path, {"from": from_date, "to": to_date})

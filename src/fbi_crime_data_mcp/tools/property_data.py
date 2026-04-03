@@ -1,6 +1,6 @@
 """Expanded property crime (supplemental) data tool."""
 
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import SUPPLEMENTAL_OFFENSES, US_STATES
@@ -51,5 +51,5 @@ async def get_expanded_property_data(
     else:
         path = f"/supplemental/national/{offense}"
 
-    app_ctx: AppContext = ctx.request_context.lifespan_context
+    app_ctx: AppContext = ctx.lifespan_context
     return await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})

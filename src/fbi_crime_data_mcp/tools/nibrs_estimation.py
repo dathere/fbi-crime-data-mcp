@@ -1,6 +1,6 @@
 """NIBRS estimation data tool."""
 
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import NIBRS_OFFENSES, NIBRS_REGIONS, NIBRS_SIZE_GROUPS, US_STATES
@@ -61,5 +61,5 @@ async def get_nibrs_estimation(
             return f"Parameter 'size_group' is required. Valid values: {', '.join(f'{k} ({v})' for k, v in NIBRS_SIZE_GROUPS.items())}"
         path = f"/nibrs-estimation/national/size/{agency_type}/{size_group}/{offense}"
 
-    app_ctx: AppContext = ctx.request_context.lifespan_context
+    app_ctx: AppContext = ctx.lifespan_context
     return await app_ctx.api_get(path, {"year": str(year)})
