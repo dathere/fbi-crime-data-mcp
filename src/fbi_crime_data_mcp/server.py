@@ -1,7 +1,5 @@
 """FBI Crime Data Explorer MCP Server."""
 
-from pathlib import Path
-
 from fastmcp import FastMCP
 from fastmcp.server.middleware.caching import (
     CallToolSettings,
@@ -14,6 +12,7 @@ from key_value.aio.stores.filetree import (
 )
 
 from .api_client import app_lifespan
+from .constants import CACHE_DIR
 
 mcp = FastMCP(
     "FBI Crime Data Explorer",
@@ -32,6 +31,7 @@ mcp = FastMCP(
 from .tools import (  # noqa: E402, F401
     agency,
     arrests,
+    cache,
     employment,
     hate_crime,
     homicide,
@@ -47,7 +47,7 @@ from .tools import (  # noqa: E402, F401
 )
 
 # --- Response caching with tiered TTLs ---
-_cache_dir = Path.home() / ".cache" / "fbi-crime-data-mcp"
+_cache_dir = CACHE_DIR
 _cache_dir.mkdir(parents=True, exist_ok=True)
 
 _cache_store = FileTreeStore(

@@ -1,6 +1,9 @@
 """Constants for FBI Crime Data Explorer API."""
 
+from pathlib import Path
+
 BASE_URL = "https://api.usa.gov/crime/fbi/cde"
+CACHE_DIR = Path.home() / ".cache" / "fbi-crime-data-mcp"
 
 # Summarized (SRS) offense codes
 SRS_OFFENSES: dict[str, str] = {
