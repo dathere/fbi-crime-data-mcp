@@ -24,7 +24,7 @@ async def get_leoka_data(
         return "Invalid report_type. Must be 'monthly' or 'ytd'."
     if report_type == "monthly" and month is None:
         return "Parameter 'month' (0-11) is required when report_type is 'monthly'."
-    if month is not None and not (0 <= month <= 11):
+    if report_type == "monthly" and month is not None and not (0 <= month <= 11):
         return "Parameter 'month' must be between 0 (January) and 11 (December)."
 
     params: dict[str, str] = {"year": str(year)}

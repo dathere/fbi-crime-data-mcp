@@ -3,9 +3,9 @@
 from fastmcp import Context
 
 from ..api_client import AppContext
-from ..constants import US_STATES
 from ..response_utils import filter_agencies_by_name
 from ..server import mcp
+from ..validators import validate_state
 
 
 @mcp.tool()
@@ -32,15 +32,17 @@ async def lookup_agency(
     if lookup_type == "by_state":
         if not state:
             return "Parameter 'state' is required for by_state lookup."
-        if state.upper() not in US_STATES:
-            return f"Invalid state '{state}'. Use a two-letter abbreviation."
+        err = validate_state(state)
+        if err:
+            return err
         path = f"/agency/byStateAbbr/{state.upper()}"
 
     elif lookup_type == "by_ori":
         if not state or not ori:
             return "Both 'state' and 'ori' are required for by_ori lookup."
-        if state.upper() not in US_STATES:
-            return f"Invalid state '{state}'. Use a two-letter abbreviation."
+        err = validate_state(state)
+        if err:
+            return err
         path = f"/agency/{state.upper()}/{ori}"
 
     else:  # by_district

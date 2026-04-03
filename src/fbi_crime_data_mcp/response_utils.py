@@ -157,4 +157,4 @@ def _apply_strategy(
         return round(sum(non_null) / len(non_null), 2)
     if strategy == "last":
         return non_null[-1]
-    return sum(non_null)
+    raise ValueError(f"Unknown aggregation strategy: {strategy!r}")

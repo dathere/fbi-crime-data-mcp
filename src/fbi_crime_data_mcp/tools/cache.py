@@ -187,6 +187,9 @@ def _clear_cache(expired_only: bool) -> str:
             # Remove the collection directory and info file
             try:
                 shutil.rmtree(collection_dir)
+            except OSError:
+                pass
+            try:
                 info_file.unlink(missing_ok=True)
             except OSError:
                 pass

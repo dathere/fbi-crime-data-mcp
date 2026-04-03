@@ -3,8 +3,8 @@
 from fastmcp import Context
 
 from ..api_client import AppContext
-from ..constants import US_STATES
 from ..server import mcp
+from ..validators import validate_state, validate_yyyy
 
 VALID_REGIONS = {"midwest", "south", "northeast", "west"}
 
@@ -37,8 +37,16 @@ async def get_police_employment(
         return "Both 'state' and 'ori' are required when level is 'agency'."
     if level == "region" and (not region or region.lower() not in VALID_REGIONS):
         return f"Parameter 'region' is required. Valid values: {', '.join(VALID_REGIONS)}"
-    if state and state.upper() not in US_STATES:
-        return f"Invalid state '{state}'."
+
+    err = validate_state(state)
+    if err:
+        return err
+    for err in (
+        validate_yyyy(from_year, "from_year"),
+        validate_yyyy(to_year, "to_year"),
+    ):
+        if err:
+            return err
 
     if level == "state":
         path = f"/pe/{state.upper()}"

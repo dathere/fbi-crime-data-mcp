@@ -65,3 +65,11 @@ class TestArrestData:
         app_ctx.api_get.assert_called_once_with(
             "/arrest/national/all/race", {"type": "counts", "from": "01-2020", "to": "12-2020"}
         )
+
+    async def test_invalid_from_date(self, ctx):
+        r = await get_arrest_data("all", "national", "counts", "2020", "12-2020", ctx=ctx)
+        assert "mm-yyyy" in r
+
+    async def test_invalid_to_date(self, ctx):
+        r = await get_arrest_data("all", "national", "counts", "01-2020", "bad", ctx=ctx)
+        assert "mm-yyyy" in r

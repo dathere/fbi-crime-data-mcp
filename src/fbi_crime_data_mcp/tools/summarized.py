@@ -3,9 +3,17 @@
 from fastmcp import Context
 
 from ..api_client import AppContext
-from ..constants import SRS_OFFENSES, US_STATES
+from ..constants import SRS_OFFENSES
 from ..response_utils import process_crime_response
 from ..server import mcp
+from ..validators import (
+    validate_level,
+    validate_mm_yyyy,
+    validate_offense,
+    validate_ori_required,
+    validate_state,
+    validate_state_required,
+)
 
 _offense_list = ", ".join(f"{k} ({v})" for k, v in SRS_OFFENSES.items())
 
@@ -34,16 +42,19 @@ async def get_summarized_crime_data(
     """.format(offenses=_offense_list)
     if aggregate not in ("yearly", "monthly"):
         return "Invalid aggregate. Must be 'yearly' or 'monthly'."
-    if offense not in SRS_OFFENSES:
-        return f"Invalid offense code '{offense}'. Valid codes: {_offense_list}"
-    if level not in ("national", "state", "agency"):
-        return "Invalid level. Must be 'national', 'state', or 'agency'."
-    if level == "state" and not state:
-        return "Parameter 'state' is required when level is 'state'."
-    if level == "agency" and not ori:
-        return "Parameter 'ori' is required when level is 'agency'."
-    if state and state.upper() not in US_STATES:
-        return f"Invalid state '{state}'. Use a two-letter abbreviation (e.g., 'CA', 'NY')."
+
+    for err in (
+        validate_offense(offense, SRS_OFFENSES, "offense code",
+                        f"Valid codes: {_offense_list}"),
+        validate_level(level),
+        validate_state_required(level, state),
+        validate_ori_required(level, ori),
+        validate_state(state),
+        validate_mm_yyyy(from_date, "from_date"),
+        validate_mm_yyyy(to_date, "to_date"),
+    ):
+        if err:
+            return err
 
     if level == "state":
         path = f"/summarized/state/{state.upper()}/{offense}"
