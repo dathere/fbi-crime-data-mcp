@@ -61,6 +61,10 @@ class TestManageCache:
         assert data["active_entries"] == 1
         assert data["expired_entries"] == 1
         assert "tools/call" in data["collections"]
+        # session_hit_rate is present; no middleware in tests → zero totals
+        hr = data["session_hit_rate"]
+        assert hr["total"] == 0
+        assert hr["hit_rate_pct"] is None
 
     async def test_clear_expired(self, fake_cache):
         r = await manage_cache("clear_expired")
