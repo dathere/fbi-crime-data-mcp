@@ -1,6 +1,6 @@
 # FBI Crime Data MCP Server
 
-An MCP (Model Context Protocol) server that provides access to the FBI's Crime Data Explorer API. Query crime statistics, arrest data, hate crimes, NIBRS incidents, law enforcement employment, and more — directly from Claude or any MCP-compatible client.
+An MCP (Model Context Protocol) server that provides access to the [FBI's Crime Data Explorer API](https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/docApi). Query crime statistics, arrest data, hate crimes, NIBRS incidents, law enforcement employment, and more — directly from Claude or any MCP-compatible client.
 
 ## Quick Start
 
