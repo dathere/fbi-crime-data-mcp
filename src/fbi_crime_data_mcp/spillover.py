@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 
 import mcp.types as mt
 from mcp.types import TextContent
@@ -60,21 +61,44 @@ class ResponseSpilloverMiddleware(Middleware):
             return result
 
         # Content-addressed filename avoids duplicates across repeated calls
+        safe_name = re.sub(r"[^A-Za-z0-9_-]", "_", tool_name)
         hash_hex = hashlib.sha256(full_text.encode()).hexdigest()[:8]
-        filename = f"{tool_name}_{hash_hex}.json"
+        filename = f"{safe_name}_{hash_hex}.json"
         spillover_path = SPILLOVER_DIR / filename
 
-        if not spillover_path.exists():
-            SPILLOVER_DIR.mkdir(parents=True, exist_ok=True)
-            spillover_path.write_text(full_text, encoding="utf-8")
-            logger.info(
-                "Tool %r response spilled to %s (%d chars)",
+        preview = full_text[: self.preview_chars]
+
+        try:
+            if not spillover_path.exists():
+                SPILLOVER_DIR.mkdir(parents=True, exist_ok=True)
+                spillover_path.write_text(full_text, encoding="utf-8")
+                logger.info(
+                    "Tool %r response spilled to %s (%d chars)",
+                    tool_name,
+                    spillover_path,
+                    len(full_text),
+                )
+        except OSError:
+            logger.warning(
+                "Failed to spill tool %r response to %s; returning preview only",
                 tool_name,
                 spillover_path,
-                len(full_text),
+                exc_info=True,
             )
+            truncated = (
+                f"NOTE: Response was {len(full_text):,} characters, which exceeds the "
+                f"{self.max_chars:,}-character limit. The full response could not be "
+                f"saved due to a filesystem error, so only a preview is shown below.\n"
+                f"\n"
+                f"To work with this data, consider:\n"
+                f"- Narrowing your query (shorter date range, specific state/agency)\n"
+                f"- Retrying after resolving disk or permissions issues\n"
+                f"\n"
+                f"--- PREVIEW (first {self.preview_chars:,} chars) ---\n"
+                f"{preview}"
+            )
+            return ToolResult(content=[TextContent(type="text", text=truncated)])
 
-        preview = full_text[: self.preview_chars]
         truncated = (
             f"NOTE: Response was {len(full_text):,} characters, which exceeds the "
             f"{self.max_chars:,}-character limit. The full response has been saved to:\n"

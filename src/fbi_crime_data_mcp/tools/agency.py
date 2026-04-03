@@ -61,7 +61,10 @@ async def lookup_agency(
     if name_filter and lookup_type in ("by_state", "by_district"):
         result = filter_agencies_by_name(result, name_filter)
 
-    if offset is not None or limit is not None:
+    if (offset is not None or limit is not None) and lookup_type in (
+        "by_state",
+        "by_district",
+    ):
         result = paginate_response(
             result,
             offset=offset if offset is not None else 0,

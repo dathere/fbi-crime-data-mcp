@@ -272,9 +272,10 @@ def _clear_cache(expired_only: bool) -> str:
     # Clear spillover files on full clear
     spillover_removed = 0
     if not expired_only and _SPILLOVER_DIR.is_dir():
-        spillover_removed = len(list(_SPILLOVER_DIR.glob("*.json")))
+        spillover_count = len(list(_SPILLOVER_DIR.glob("*.json")))
         try:
             shutil.rmtree(_SPILLOVER_DIR)
+            spillover_removed = spillover_count
         except OSError:
             pass
 

@@ -97,9 +97,14 @@ def paginate_response(raw_json: str, offset: int, limit: int) -> str:
 
     Args:
         raw_json: JSON string — array or dict of arrays.
-        offset: Number of items to skip.
-        limit: Maximum number of items to return.
+        offset: Number of items to skip (must be >= 0).
+        limit: Maximum number of items to return (must be > 0).
     """
+    if offset < 0:
+        return f"Invalid offset ({offset}). Must be >= 0."
+    if limit <= 0:
+        return f"Invalid limit ({limit}). Must be > 0."
+
     try:
         data = json.loads(raw_json)
     except (json.JSONDecodeError, TypeError):
@@ -121,6 +126,8 @@ def paginate_response(raw_json: str, offset: int, limit: int) -> str:
                 if isinstance(agency, dict):
                     entry = {**agency, "_pagination_group": group}
                     flat.append(entry)
+        if not flat:
+            return raw_json
         total = len(flat)
         page = flat[offset : offset + limit]
         result = {"total": total, "offset": offset, "limit": limit, "data": page}

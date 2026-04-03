@@ -33,7 +33,11 @@ def _make_result(text: str) -> ToolResult:
 
 
 class TestSpilloverMiddleware:
-    async def test_small_response_passes_through(self, tmp_path):
+    async def test_small_response_passes_through(self, tmp_path, monkeypatch):
+        import fbi_crime_data_mcp.spillover as mod
+
+        monkeypatch.setattr(mod, "SPILLOVER_DIR", tmp_path / "spillover")
+
         mw = ResponseSpilloverMiddleware(max_chars=1000)
         small = _make_result('{"data": "small"}')
         call_next = AsyncMock(return_value=small)
