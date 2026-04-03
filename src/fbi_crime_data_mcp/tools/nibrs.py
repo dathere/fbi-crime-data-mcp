@@ -30,7 +30,7 @@ async def get_nibrs_data(
         data_type: "counts" for time series data or "totals" for aggregate breakdowns (default: "counts")
         state: Two-letter state abbreviation (required when level is "state")
         ori: Agency ORI code (required when level is "agency")
-        aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (raw monthly data). Only applies when data_type is "counts".
+        aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity). Only applies when data_type is "counts".
     """
     if data_type == "counts" and aggregate not in ("yearly", "monthly"):
         return "Invalid aggregate. Must be 'yearly' or 'monthly'."

@@ -30,7 +30,7 @@ async def get_summarized_crime_data(
         to_date: End date in mm-yyyy format (e.g., "12-2022")
         state: Two-letter state abbreviation (required when level is "state")
         ori: Agency ORI code (required when level is "agency")
-        aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (raw monthly data)
+        aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity)
     """.format(offenses=_offense_list)
     if aggregate not in ("yearly", "monthly"):
         return "Invalid aggregate. Must be 'yearly' or 'monthly'."
