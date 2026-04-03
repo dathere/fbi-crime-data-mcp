@@ -31,8 +31,11 @@ class RateLimiter:
         while self._timestamps and self._timestamps[0] < cutoff:
             self._timestamps.popleft()
         if len(self._timestamps) >= self.max_requests:
-            oldest = self._timestamps[0]
-            wait = int(oldest + self.window_seconds - now) + 1
+            if self._timestamps:
+                oldest = self._timestamps[0]
+                wait = int(oldest + self.window_seconds - now) + 1
+            else:
+                wait = self.window_seconds
             return (
                 f"Rate limit reached ({self.max_requests} requests per hour). "
                 f"Try again in ~{wait} seconds."
