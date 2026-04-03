@@ -33,32 +33,32 @@ FBI_API_KEY=your-key uvx fbi-crime-data-mcp
 ### Core Crime Data
 | Tool | Description |
 |------|-------------|
-| [`get_summarized_crime_data`](src/fbi_crime_data_mcp/tools/summarized.py#L13) | SRS crime data — rates, actuals, clearances for violent crime, property crime, homicide, rape, robbery, assault, burglary, larceny, motor vehicle theft, arson |
-| [`get_nibrs_data`](src/fbi_crime_data_mcp/tools/nibrs.py#L11) | NIBRS incident-based data for 70+ offense types |
-| [`get_arrest_data`](src/fbi_crime_data_mcp/tools/arrests.py#L13) | Arrest statistics by offense with optional demographic breakdowns (sex, race) |
-| [`get_crime_trends`](src/fbi_crime_data_mcp/tools/trends.py#L10) | National crime trend percent changes across 10 crime types |
-| [`get_nibrs_estimation`](src/fbi_crime_data_mcp/tools/nibrs_estimation.py#L11) | NIBRS national estimates by state, region, agency type, or population size |
+| [`get_summarized_crime_data`](src/fbi_crime_data_mcp/tools/summarized.py) | SRS crime data — rates, actuals, clearances for violent crime, property crime, homicide, rape, robbery, assault, burglary, larceny, motor vehicle theft, arson |
+| [`get_nibrs_data`](src/fbi_crime_data_mcp/tools/nibrs.py) | NIBRS incident-based data for 70+ offense types |
+| [`get_arrest_data`](src/fbi_crime_data_mcp/tools/arrests.py) | Arrest statistics by offense with optional demographic breakdowns (sex, race) |
+| [`get_crime_trends`](src/fbi_crime_data_mcp/tools/trends.py) | National crime trend percent changes across 10 crime types |
+| [`get_nibrs_estimation`](src/fbi_crime_data_mcp/tools/nibrs_estimation.py) | NIBRS national estimates by state, region, agency type, or population size |
 
 ### Specialized Crime Data
 | Tool | Description |
 |------|-------------|
-| [`get_hate_crime_data`](src/fbi_crime_data_mcp/tools/hate_crime.py#L11) | Hate crime incidents by bias motivation (30+ categories) |
-| [`get_expanded_homicide_data`](src/fbi_crime_data_mcp/tools/homicide.py#L11) | Supplementary Homicide Reports — victim/offender demographics, weapons, circumstances |
-| [`get_expanded_property_data`](src/fbi_crime_data_mcp/tools/property_data.py#L13) | Expanded property crime details — stolen/recovered values for burglary, larceny, MVT, robbery |
+| [`get_hate_crime_data`](src/fbi_crime_data_mcp/tools/hate_crime.py) | Hate crime incidents by bias motivation (30+ categories) |
+| [`get_expanded_homicide_data`](src/fbi_crime_data_mcp/tools/homicide.py) | Supplementary Homicide Reports — victim/offender demographics, weapons, circumstances |
+| [`get_expanded_property_data`](src/fbi_crime_data_mcp/tools/property_data.py) | Expanded property crime details — stolen/recovered values for burglary, larceny, MVT, robbery |
 
 ### Law Enforcement Data
 | Tool | Description |
 |------|-------------|
-| [`get_police_employment`](src/fbi_crime_data_mcp/tools/employment.py#L13) | Officer and civilian employee counts by gender, rates per 1,000 population |
-| [`get_leoka_data`](src/fbi_crime_data_mcp/tools/leoka.py#L10) | Officers killed and assaulted — weapons, circumstances, demographics |
-| [`get_lesdc_data`](src/fbi_crime_data_mcp/tools/lesdc.py#L13) | Law enforcement suicide data — demographics, race, duty status, and more |
-| [`get_use_of_force_data`](src/fbi_crime_data_mcp/tools/use_of_force.py#L11) | Use of force incidents resulting in death, serious injury, or firearm discharge |
+| [`get_police_employment`](src/fbi_crime_data_mcp/tools/employment.py) | Officer and civilian employee counts by gender, rates per 1,000 population |
+| [`get_leoka_data`](src/fbi_crime_data_mcp/tools/leoka.py) | Officers killed and assaulted — weapons, circumstances, demographics |
+| [`get_lesdc_data`](src/fbi_crime_data_mcp/tools/lesdc.py) | Law enforcement suicide data — demographics, race, duty status, and more |
+| [`get_use_of_force_data`](src/fbi_crime_data_mcp/tools/use_of_force.py) | Use of force incidents resulting in death, serious injury, or firearm discharge |
 
 ### Reference & Lookup
 | Tool | Description |
 |------|-------------|
-| [`lookup_agency`](src/fbi_crime_data_mcp/tools/agency.py#L11) | Find law enforcement agencies by state, ORI code, or judicial district |
-| [`get_reference_data`](src/fbi_crime_data_mcp/tools/reference.py#L10) | State lists, offense/bias code lookups, data refresh dates |
+| [`lookup_agency`](src/fbi_crime_data_mcp/tools/agency.py) | Find law enforcement agencies by state, ORI code, or judicial district |
+| [`get_reference_data`](src/fbi_crime_data_mcp/tools/reference.py) | State lists, offense/bias code lookups, data refresh dates |
 
 ## Data Sources
 
