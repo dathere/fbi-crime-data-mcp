@@ -70,7 +70,7 @@ All data comes from the FBI's [Crime Data Explorer](https://cde.ucr.cjis.gov/) A
 - **Registered key**: 1,000 requests per hour (rolling window)
 - **DEMO_KEY**: 30 requests per IP per hour
 
-The server includes built-in rate limiting to stay within these bounds.
+The server includes a built-in rate limiter (1,000 req/hr). The DEMO_KEY limit is enforced API-side.
 
 ## Development
 
