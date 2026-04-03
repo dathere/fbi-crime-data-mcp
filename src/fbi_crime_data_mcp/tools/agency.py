@@ -3,7 +3,7 @@
 from fastmcp import Context
 
 from ..api_client import AppContext
-from ..response_utils import filter_agencies_by_name
+from ..response_utils import filter_agencies_by_name, paginate_response
 from ..server import mcp
 from ..validators import validate_state
 
@@ -15,6 +15,8 @@ async def lookup_agency(
     ori: str | None = None,
     district_code: str | None = None,
     name_filter: str | None = None,
+    offset: int | None = None,
+    limit: int | None = None,
     ctx: Context | None = None,
 ) -> str:
     """Look up law enforcement agencies by state, ORI code, or judicial district code.
@@ -25,6 +27,8 @@ async def lookup_agency(
         ori: Agency ORI identifier (required for by_ori)
         district_code: Judicial district code (required for by_district)
         name_filter: Optional substring to filter results by agency name (case-insensitive). Only applies to by_state and by_district lookups.
+        offset: Number of results to skip (for pagination). Applied after name_filter.
+        limit: Maximum number of results to return (for pagination). Applied after name_filter.
     """
     if lookup_type not in ("by_state", "by_ori", "by_district"):
         return "Invalid lookup_type. Must be 'by_state', 'by_ori', or 'by_district'."
@@ -53,6 +57,15 @@ async def lookup_agency(
     app_ctx: AppContext = ctx.lifespan_context
     raw = await app_ctx.api_get(path)
 
+    result = raw
     if name_filter and lookup_type in ("by_state", "by_district"):
-        return filter_agencies_by_name(raw, name_filter)
-    return raw
+        result = filter_agencies_by_name(result, name_filter)
+
+    if offset is not None or limit is not None:
+        result = paginate_response(
+            result,
+            offset=offset or 0,
+            limit=limit or 100,
+        )
+
+    return result

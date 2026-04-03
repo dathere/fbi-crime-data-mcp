@@ -65,6 +65,8 @@ class TestManageCache:
         hr = data["session_hit_rate"]
         assert hr["total"] == 0
         assert hr["hit_rate_pct"] is None
+        # spillover stats present
+        assert data["spillover"]["files"] == 0
 
     async def test_clear_expired(self, fake_cache):
         r = await manage_cache("clear_expired")
@@ -135,3 +137,47 @@ class TestManageCache:
         data = json.loads(r)
         assert data["total_entries"] == 1
         assert data["expired_entries"] == 1
+
+    async def test_status_reports_spillover(self, tmp_path, monkeypatch):
+        """Spillover files are counted in status output."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        monkeypatch.setattr(cache_mod, "_SPILLOVER_DIR", tmp_path / "spillover")
+
+        spillover = tmp_path / "spillover"
+        spillover.mkdir()
+        (spillover / "tool_abc123.json").write_text('{"big": "data"}')
+        (spillover / "tool_def456.json").write_text('{"more": "data"}')
+
+        r = await manage_cache("status")
+        data = json.loads(r)
+        assert data["spillover"]["files"] == 2
+        assert data["spillover"]["size_kb"] >= 0
+
+    async def test_clear_removes_spillover(self, fake_cache, monkeypatch):
+        """Full clear removes spillover directory."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        spillover = fake_cache / "spillover"
+        spillover.mkdir()
+        (spillover / "tool_abc123.json").write_text("big data")
+        monkeypatch.setattr(cache_mod, "_SPILLOVER_DIR", spillover)
+
+        r = await manage_cache("clear")
+        data = json.loads(r)
+        assert data["spillover_removed"] == 1
+        assert not spillover.exists()
+
+    async def test_clear_expired_keeps_spillover(self, fake_cache, monkeypatch):
+        """Clearing expired entries does not touch spillover."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        spillover = fake_cache / "spillover"
+        spillover.mkdir()
+        (spillover / "tool_abc123.json").write_text("big data")
+        monkeypatch.setattr(cache_mod, "_SPILLOVER_DIR", spillover)
+
+        await manage_cache("clear_expired")
+        assert spillover.exists()
+        assert (spillover / "tool_abc123.json").exists()
