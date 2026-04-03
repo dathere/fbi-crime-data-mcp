@@ -133,6 +133,10 @@ class TestHateCrime:
             "/hate-crime/agency/X1", {"type": "counts", "from": "01-2020", "to": "12-2020"}
         )
 
+    async def test_invalid_aggregate(self, ctx):
+        r = await get_hate_crime_data("national", "01-2020", "12-2020", aggregate="bad", ctx=ctx)
+        assert "Invalid aggregate" in r
+
 
 # ── Expanded Homicide ────────────────────────────────────────────────────────
 
@@ -176,6 +180,10 @@ class TestHomicide:
             "/shr/agency/X1", {"type": "counts", "from": "01-2020", "to": "12-2020"}
         )
 
+    async def test_invalid_aggregate(self, ctx):
+        r = await get_expanded_homicide_data("national", "counts", "01-2020", "12-2020", aggregate="bad", ctx=ctx)
+        assert "Invalid aggregate" in r
+
 
 # ── Expanded Property Data ───────────────────────────────────────────────────
 
@@ -210,6 +218,10 @@ class TestPropertyData:
         app_ctx.api_get.assert_called_once_with(
             "/supplemental/national/NB", {"type": "counts", "from": "01-2020", "to": "12-2020"}
         )
+
+    async def test_invalid_aggregate(self, ctx):
+        r = await get_expanded_property_data("NB", "national", "counts", "01-2020", "12-2020", aggregate="bad", ctx=ctx)
+        assert "Invalid aggregate" in r
 
     async def test_all_supplemental_offenses(self, ctx, app_ctx):
         for code in ("NB", "NL", "NMVT", "NROB"):

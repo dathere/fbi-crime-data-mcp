@@ -10,7 +10,7 @@ _MM_YYYY_RE = re.compile(r"^(\d{2})-(\d{4})$")
 
 # Subsection names where values should be averaged (rates) or taken as-is (populations)
 _RATE_KEYS = {"rates"}
-_POPULATION_KEYS = {"population", "participated_population"}
+_POPULATION_KEYS = {"population"}
 
 
 def process_crime_response(raw_json: str, aggregate: str = "yearly") -> str:
@@ -121,8 +121,7 @@ def _is_monthly_dict(d: dict) -> bool:
     """Check if a dict's keys are mm-yyyy formatted dates."""
     if not d:
         return False
-    sample_keys = list(d.keys())[:3]
-    return all(_MM_YYYY_RE.match(k) for k in sample_keys)
+    return all(_MM_YYYY_RE.match(k) for k in d)
 
 
 def _collapse_monthly(monthly: dict, strategy: str) -> dict:
