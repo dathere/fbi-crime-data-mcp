@@ -4,6 +4,7 @@ from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import SRS_OFFENSES, US_STATES
+from ..response_utils import process_crime_response
 from ..server import mcp
 
 _offense_list = ", ".join(f"{k} ({v})" for k, v in SRS_OFFENSES.items())
@@ -17,6 +18,7 @@ async def get_summarized_crime_data(
     to_date: str,
     state: str | None = None,
     ori: str | None = None,
+    aggregate: str = "yearly",
     ctx: Context | None = None,
 ) -> str:
     """Get summarized (SRS) crime data including offense rates, actuals, clearances, and population coverage.
@@ -28,7 +30,10 @@ async def get_summarized_crime_data(
         to_date: End date in mm-yyyy format (e.g., "12-2022")
         state: Two-letter state abbreviation (required when level is "state")
         ori: Agency ORI code (required when level is "agency")
+        aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity)
     """.format(offenses=_offense_list)
+    if aggregate not in ("yearly", "monthly"):
+        return "Invalid aggregate. Must be 'yearly' or 'monthly'."
     if offense not in SRS_OFFENSES:
         return f"Invalid offense code '{offense}'. Valid codes: {_offense_list}"
     if level not in ("national", "state", "agency"):
@@ -48,4 +53,5 @@ async def get_summarized_crime_data(
         path = f"/summarized/national/{offense}"
 
     app_ctx: AppContext = ctx.lifespan_context
-    return await app_ctx.api_get(path, {"from": from_date, "to": to_date})
+    raw = await app_ctx.api_get(path, {"from": from_date, "to": to_date})
+    return process_crime_response(raw, aggregate=aggregate)

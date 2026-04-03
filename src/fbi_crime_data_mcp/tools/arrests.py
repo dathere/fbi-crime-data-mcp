@@ -4,6 +4,7 @@ from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import ARREST_OFFENSES, US_STATES
+from ..response_utils import process_crime_response
 from ..server import mcp
 
 ARREST_CATEGORIES = {"male", "female", "race", "sex"}
@@ -19,6 +20,7 @@ async def get_arrest_data(
     state: str | None = None,
     ori: str | None = None,
     category: str | None = None,
+    aggregate: str = "yearly",
     ctx: Context | None = None,
 ) -> str:
     """Get arrest statistics by offense, optionally broken down by demographics.
@@ -32,7 +34,10 @@ async def get_arrest_data(
         state: Two-letter state abbreviation (required when level is "state")
         ori: Agency ORI code (required when level is "agency")
         category: Optional demographic breakdown — "male", "female", "race", or "sex"
+        aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity). Only applies when data_type is "counts".
     """
+    if data_type == "counts" and aggregate not in ("yearly", "monthly"):
+        return "Invalid aggregate. Must be 'yearly' or 'monthly'."
     if offense not in ARREST_OFFENSES:
         return f"Invalid arrest offense code '{offense}'. Common codes: all (All), 11 (Murder), 30 (Robbery), 50 (Assault), 60 (Burglary), 70 (Larceny), 150 (Drug Abuse), 260 (DUI)."
     if level not in ("national", "state", "agency"):
@@ -59,4 +64,5 @@ async def get_arrest_data(
         path += f"/{category}"
 
     app_ctx: AppContext = ctx.lifespan_context
-    return await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})
+    raw = await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})
+    return process_crime_response(raw, aggregate=aggregate if data_type == "counts" else "monthly")

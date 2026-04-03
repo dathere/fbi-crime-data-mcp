@@ -1,0 +1,269 @@
+"""Tests for response_utils module."""
+
+import json
+
+from fbi_crime_data_mcp.response_utils import (
+    filter_agencies_by_name,
+    process_crime_response,
+)
+
+# --- Fixtures: realistic API response structures ---
+
+MONTHLY_RESPONSE = {
+    "offenses": {
+        "rates": {
+            "Agency Offenses": {
+                "01-2023": 10.0,
+                "02-2023": 20.0,
+                "03-2023": 30.0,
+                "01-2024": 15.0,
+                "02-2024": 25.0,
+            }
+        },
+        "actuals": {
+            "Agency Offenses": {
+                "01-2023": 5,
+                "02-2023": 3,
+                "03-2023": 7,
+                "01-2024": 4,
+                "02-2024": 6,
+            },
+            "Agency Clearances": {
+                "01-2023": 2,
+                "02-2023": 1,
+                "03-2023": 3,
+                "01-2024": 2,
+                "02-2024": 4,
+            },
+        },
+    },
+    "tooltips": {
+        "leftYAxisHeaders": {"yAxisHeaderRates": "Offenses per 100,000"},
+        "Percent of Population Coverage": {"State": {"01-2023": 50.0}},
+    },
+    "populations": {
+        "population": {
+            "Agency": {
+                "01-2023": 50000,
+                "02-2023": 50000,
+                "03-2023": 50000,
+                "01-2024": 51000,
+                "02-2024": 51000,
+            }
+        },
+        "participated_population": {
+            "State": {
+                "01-2023": 8000000,
+                "02-2023": 8000000,
+            }
+        },
+    },
+    "cde_properties": {"max_data_date": {"UCR": "03/2026"}},
+}
+
+AGENCY_LIST = [
+    {"ori": "NJ0090900", "agency_name": "Secaucus Police Department", "state_abbr": "NJ"},
+    {"ori": "NJ0091000", "agency_name": "Union City Police Department", "state_abbr": "NJ"},
+    {"ori": "NJ0090100", "agency_name": "Bayonne Police Department", "state_abbr": "NJ"},
+    {"ori": "NJ0090200", "agency_name": "East Newark Police Department", "state_abbr": "NJ"},
+]
+
+
+class TestProcessCrimeResponse:
+    def test_error_string_passthrough(self):
+        assert process_crime_response("Error: timeout") == "Error: timeout"
+
+    def test_rate_limit_passthrough(self):
+        msg = "Rate limit reached (1000 requests per 1 hour). Try again in ~30 seconds."
+        assert process_crime_response(msg) == msg
+
+    def test_validation_error_passthrough(self):
+        msg = "Invalid offense code 'XYZ'."
+        assert process_crime_response(msg) == msg
+
+    def test_non_json_passthrough(self):
+        assert process_crime_response("not json at all") == "not json at all"
+
+    def test_trimming_removes_tooltips(self):
+        raw = json.dumps(MONTHLY_RESPONSE)
+        result = json.loads(process_crime_response(raw, aggregate="monthly"))
+        assert "tooltips" not in result
+
+    def test_trimming_removes_participated_population(self):
+        raw = json.dumps(MONTHLY_RESPONSE)
+        result = json.loads(process_crime_response(raw, aggregate="monthly"))
+        assert "participated_population" not in result["populations"]
+
+    def test_trimming_keeps_population(self):
+        raw = json.dumps(MONTHLY_RESPONSE)
+        result = json.loads(process_crime_response(raw, aggregate="monthly"))
+        assert "population" in result["populations"]
+
+    def test_trimming_keeps_cde_properties(self):
+        raw = json.dumps(MONTHLY_RESPONSE)
+        result = json.loads(process_crime_response(raw, aggregate="monthly"))
+        assert "cde_properties" in result
+
+    def test_monthly_preserves_mm_yyyy_keys(self):
+        raw = json.dumps(MONTHLY_RESPONSE)
+        result = json.loads(process_crime_response(raw, aggregate="monthly"))
+        actuals = result["offenses"]["actuals"]["Agency Offenses"]
+        assert "01-2023" in actuals
+
+    def test_yearly_sums_actuals(self):
+        raw = json.dumps(MONTHLY_RESPONSE)
+        result = json.loads(process_crime_response(raw, aggregate="yearly"))
+        actuals = result["offenses"]["actuals"]["Agency Offenses"]
+        assert actuals["2023"] == 15  # 5 + 3 + 7
+        assert actuals["2024"] == 10  # 4 + 6
+
+    def test_yearly_sums_clearances(self):
+        raw = json.dumps(MONTHLY_RESPONSE)
+        result = json.loads(process_crime_response(raw, aggregate="yearly"))
+        clearances = result["offenses"]["actuals"]["Agency Clearances"]
+        assert clearances["2023"] == 6  # 2 + 1 + 3
+        assert clearances["2024"] == 6  # 2 + 4
+
+    def test_yearly_averages_rates(self):
+        raw = json.dumps(MONTHLY_RESPONSE)
+        result = json.loads(process_crime_response(raw, aggregate="yearly"))
+        rates = result["offenses"]["rates"]["Agency Offenses"]
+        assert rates["2023"] == 20.0  # avg(10, 20, 30)
+        assert rates["2024"] == 20.0  # avg(15, 25)
+
+    def test_yearly_population_uses_last(self):
+        raw = json.dumps(MONTHLY_RESPONSE)
+        result = json.loads(process_crime_response(raw, aggregate="yearly"))
+        pop = result["populations"]["population"]["Agency"]
+        assert pop["2023"] == 50000
+        assert pop["2024"] == 51000
+
+    def test_null_values_skipped_in_sum(self):
+        data = {
+            "offenses": {
+                "actuals": {
+                    "Series": {
+                        "01-2023": 5,
+                        "02-2023": None,
+                        "03-2023": 3,
+                    }
+                }
+            }
+        }
+        raw = json.dumps(data)
+        result = json.loads(process_crime_response(raw, aggregate="yearly"))
+        assert result["offenses"]["actuals"]["Series"]["2023"] == 8
+
+    def test_all_null_year_returns_null(self):
+        data = {
+            "offenses": {
+                "actuals": {
+                    "Series": {
+                        "01-2023": None,
+                        "02-2023": None,
+                    }
+                }
+            }
+        }
+        raw = json.dumps(data)
+        result = json.loads(process_crime_response(raw, aggregate="yearly"))
+        assert result["offenses"]["actuals"]["Series"]["2023"] is None
+
+    def test_partial_year_sums_available_months(self):
+        data = {
+            "offenses": {
+                "actuals": {
+                    "Series": {
+                        "01-2024": 10,
+                        "02-2024": 10,
+                        "03-2024": 10,
+                        "04-2024": 10,
+                        "05-2024": 10,
+                        "06-2024": 10,
+                        "07-2024": 10,
+                        "08-2024": 10,
+                        "09-2024": 10,
+                        "10-2024": 10,
+                        "11-2024": 10,
+                        "12-2024": 10,
+                        "01-2025": 5,
+                        "02-2025": 5,
+                        "03-2025": 5,
+                    }
+                }
+            }
+        }
+        raw = json.dumps(data)
+        result = json.loads(process_crime_response(raw, aggregate="yearly"))
+        series = result["offenses"]["actuals"]["Series"]
+        assert series["2024"] == 120
+        assert series["2025"] == 15  # only 3 months
+
+    def test_non_monthly_dict_preserved(self):
+        data = {
+            "cde_properties": {"max_data_date": {"UCR": "03/2026"}},
+            "offenses": {
+                "actuals": {
+                    "Series": {"01-2023": 5, "02-2023": 3}
+                }
+            },
+        }
+        raw = json.dumps(data)
+        result = json.loads(process_crime_response(raw, aggregate="yearly"))
+        assert result["cde_properties"]["max_data_date"]["UCR"] == "03/2026"
+
+    def test_simple_json_without_monthly_keys(self):
+        """Non-crime responses (e.g. mock '{"ok": true}') pass through gracefully."""
+        raw = '{"ok": true}'
+        result = json.loads(process_crime_response(raw, aggregate="yearly"))
+        assert result == {"ok": True}
+
+    def test_actuals_integers_stay_integers(self):
+        data = {
+            "offenses": {
+                "actuals": {
+                    "Series": {"01-2023": 5, "02-2023": 3}
+                }
+            }
+        }
+        raw = json.dumps(data)
+        result = json.loads(process_crime_response(raw, aggregate="yearly"))
+        val = result["offenses"]["actuals"]["Series"]["2023"]
+        assert val == 8
+        assert isinstance(val, int)
+
+
+class TestFilterAgenciesByName:
+    def test_exact_match(self):
+        raw = json.dumps(AGENCY_LIST)
+        result = json.loads(filter_agencies_by_name(raw, "Secaucus"))
+        assert len(result) == 1
+        assert result[0]["ori"] == "NJ0090900"
+
+    def test_case_insensitive(self):
+        raw = json.dumps(AGENCY_LIST)
+        result = json.loads(filter_agencies_by_name(raw, "secaucus"))
+        assert len(result) == 1
+
+    def test_substring_match(self):
+        raw = json.dumps(AGENCY_LIST)
+        result = json.loads(filter_agencies_by_name(raw, "Newark"))
+        assert len(result) == 1
+        assert result[0]["agency_name"] == "East Newark Police Department"
+
+    def test_multiple_matches(self):
+        raw = json.dumps(AGENCY_LIST)
+        result = json.loads(filter_agencies_by_name(raw, "Police"))
+        assert len(result) == 4
+
+    def test_no_matches(self):
+        raw = json.dumps(AGENCY_LIST)
+        result = json.loads(filter_agencies_by_name(raw, "Hoboken"))
+        assert result == []
+
+    def test_error_passthrough(self):
+        assert filter_agencies_by_name("Error: timeout", "test") == "Error: timeout"
+
+    def test_non_list_passthrough(self):
+        raw = '{"key": "value"}'
+        assert filter_agencies_by_name(raw, "test") == raw

@@ -50,3 +50,31 @@ class TestLookupAgency:
     async def test_by_district_success(self, ctx, app_ctx):
         await lookup_agency("by_district", district_code="DC1", ctx=ctx)
         app_ctx.api_get.assert_called_once_with("/agency/byDistCode/DC1")
+
+    # ── name_filter ──
+    async def test_name_filter_filters_by_state(self, ctx, app_ctx):
+        import json
+
+        agencies = [
+            {"agency_name": "Secaucus Police Department"},
+            {"agency_name": "Union City Police Department"},
+        ]
+        app_ctx.api_get.return_value = json.dumps(agencies)
+        r = await lookup_agency("by_state", state="NJ", name_filter="Secaucus", ctx=ctx)
+        result = json.loads(r)
+        assert len(result) == 1
+        assert result[0]["agency_name"] == "Secaucus Police Department"
+
+    async def test_name_filter_case_insensitive(self, ctx, app_ctx):
+        import json
+
+        agencies = [{"agency_name": "Secaucus Police Department"}]
+        app_ctx.api_get.return_value = json.dumps(agencies)
+        r = await lookup_agency("by_state", state="NJ", name_filter="secaucus", ctx=ctx)
+        result = json.loads(r)
+        assert len(result) == 1
+
+    async def test_name_filter_ignored_for_by_ori(self, ctx, app_ctx):
+        """name_filter should not apply to by_ori lookups."""
+        await lookup_agency("by_ori", state="NY", ori="NY0303000", name_filter="test", ctx=ctx)
+        app_ctx.api_get.assert_called_once_with("/agency/NY/NY0303000")

@@ -4,6 +4,7 @@ from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import BIAS_CODES, US_STATES
+from ..response_utils import process_crime_response
 from ..server import mcp
 
 
@@ -16,6 +17,7 @@ async def get_hate_crime_data(
     data_type: str = "counts",
     state: str | None = None,
     ori: str | None = None,
+    aggregate: str = "yearly",
     ctx: Context | None = None,
 ) -> str:
     """Get hate crime statistics, optionally filtered by bias motivation. Returns incident counts, victim types, offense types, offender demographics, and locations.
@@ -28,7 +30,10 @@ async def get_hate_crime_data(
         data_type: "counts" for time series or "totals" for aggregate data (default: "counts")
         state: Two-letter state abbreviation (required when level is "state")
         ori: Agency ORI code (required when level is "agency")
+        aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity). Only applies when data_type is "counts".
     """
+    if data_type == "counts" and aggregate not in ("yearly", "monthly"):
+        return "Invalid aggregate. Must be 'yearly' or 'monthly'."
     if level not in ("national", "state", "agency"):
         return "Invalid level. Must be 'national', 'state', or 'agency'."
     if data_type not in ("counts", "totals"):
@@ -53,4 +58,5 @@ async def get_hate_crime_data(
         path += f"/{bias}"
 
     app_ctx: AppContext = ctx.lifespan_context
-    return await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})
+    raw = await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})
+    return process_crime_response(raw, aggregate=aggregate if data_type == "counts" else "monthly")

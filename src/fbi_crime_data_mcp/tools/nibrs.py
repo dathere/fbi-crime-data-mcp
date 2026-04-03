@@ -4,6 +4,7 @@ from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import NIBRS_OFFENSES, US_STATES
+from ..response_utils import process_crime_response
 from ..server import mcp
 
 
@@ -16,6 +17,7 @@ async def get_nibrs_data(
     data_type: str = "counts",
     state: str | None = None,
     ori: str | None = None,
+    aggregate: str = "yearly",
     ctx: Context | None = None,
 ) -> str:
     """Get NIBRS incident-based crime data for 70+ offense types.
@@ -28,7 +30,10 @@ async def get_nibrs_data(
         data_type: "counts" for time series data or "totals" for aggregate breakdowns (default: "counts")
         state: Two-letter state abbreviation (required when level is "state")
         ori: Agency ORI code (required when level is "agency")
+        aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity). Only applies when data_type is "counts".
     """
+    if data_type == "counts" and aggregate not in ("yearly", "monthly"):
+        return "Invalid aggregate. Must be 'yearly' or 'monthly'."
     if offense not in NIBRS_OFFENSES:
         return f"Invalid NIBRS offense code '{offense}'. Common codes: 09A (Murder), 11A (Rape), 120 (Robbery), 13A (Aggravated Assault), 220 (Burglary), 23H (All Other Larceny), 240 (Motor Vehicle Theft), 200 (Arson), 35A (Drug/Narcotic Violations), 520 (Weapon Law Violations)."
     if level not in ("national", "state", "agency"):
@@ -50,4 +55,5 @@ async def get_nibrs_data(
         path = f"/nibrs/national/{offense}"
 
     app_ctx: AppContext = ctx.lifespan_context
-    return await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})
+    raw = await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})
+    return process_crime_response(raw, aggregate=aggregate if data_type == "counts" else "monthly")

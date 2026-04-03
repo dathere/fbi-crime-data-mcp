@@ -46,6 +46,10 @@ class TestNibrsData:
             "/nibrs/agency/X1/120", {"type": "counts", "from": "01-2020", "to": "12-2020"}
         )
 
+    async def test_invalid_aggregate(self, ctx):
+        r = await get_nibrs_data("09A", "national", "01-2020", "12-2020", aggregate="bad", ctx=ctx)
+        assert "Invalid aggregate" in r
+
     async def test_totals_data_type(self, ctx, app_ctx):
         await get_nibrs_data("09A", "national", "01-2020", "12-2020", data_type="totals", ctx=ctx)
         app_ctx.api_get.assert_called_once_with(

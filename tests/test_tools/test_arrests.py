@@ -50,6 +50,16 @@ class TestArrestData:
             "/arrest/agency/X123/all", {"type": "counts", "from": "01-2020", "to": "12-2020"}
         )
 
+    async def test_invalid_aggregate(self, ctx):
+        r = await get_arrest_data("all", "national", "counts", "01-2020", "12-2020", aggregate="bad", ctx=ctx)
+        assert "Invalid aggregate" in r
+
+    async def test_totals_ignores_invalid_aggregate(self, ctx, app_ctx):
+        await get_arrest_data("all", "national", "totals", "01-2020", "12-2020", aggregate="bad", ctx=ctx)
+        app_ctx.api_get.assert_called_once_with(
+            "/arrest/national/all", {"type": "totals", "from": "01-2020", "to": "12-2020"}
+        )
+
     async def test_category_appended(self, ctx, app_ctx):
         await get_arrest_data("all", "national", "counts", "01-2020", "12-2020", category="race", ctx=ctx)
         app_ctx.api_get.assert_called_once_with(

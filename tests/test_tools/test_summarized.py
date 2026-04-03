@@ -47,3 +47,16 @@ class TestSummarizedCrimeData:
             app_ctx.api_get.reset_mock()
             r = await get_summarized_crime_data(code, "national", "01-2020", "12-2020", ctx=ctx)
             assert "Invalid" not in r
+
+    async def test_invalid_aggregate(self, ctx):
+        r = await get_summarized_crime_data("V", "national", "01-2020", "12-2020", aggregate="bad", ctx=ctx)
+        assert "Invalid aggregate" in r
+
+    async def test_aggregate_defaults_to_yearly(self, ctx, app_ctx):
+        """Verify aggregate parameter defaults to yearly (api_get still called)."""
+        await get_summarized_crime_data("V", "national", "01-2020", "12-2020", ctx=ctx)
+        app_ctx.api_get.assert_called_once()
+
+    async def test_monthly_aggregate_accepted(self, ctx, app_ctx):
+        r = await get_summarized_crime_data("V", "national", "01-2020", "12-2020", aggregate="monthly", ctx=ctx)
+        assert "Invalid" not in r

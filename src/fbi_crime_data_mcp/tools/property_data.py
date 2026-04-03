@@ -4,6 +4,7 @@ from fastmcp import Context
 
 from ..api_client import AppContext
 from ..constants import SUPPLEMENTAL_OFFENSES, US_STATES
+from ..response_utils import process_crime_response
 from ..server import mcp
 
 _offense_list = ", ".join(f"{k} ({v})" for k, v in SUPPLEMENTAL_OFFENSES.items())
@@ -18,6 +19,7 @@ async def get_expanded_property_data(
     to_date: str,
     state: str | None = None,
     ori: str | None = None,
+    aggregate: str = "yearly",
     ctx: Context | None = None,
 ) -> str:
     """Get expanded property crime data with details on stolen/recovered property values.
@@ -30,7 +32,10 @@ async def get_expanded_property_data(
         to_date: End date in mm-yyyy format (e.g., "12-2022")
         state: Two-letter state abbreviation (required when level is "state")
         ori: Agency ORI code (required when level is "agency")
+        aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity). Only applies when data_type is "counts".
     """.format(offenses=_offense_list)
+    if data_type == "counts" and aggregate not in ("yearly", "monthly"):
+        return "Invalid aggregate. Must be 'yearly' or 'monthly'."
     if offense not in SUPPLEMENTAL_OFFENSES:
         return f"Invalid offense code '{offense}'. Valid codes: {_offense_list}"
     if level not in ("national", "state", "agency"):
@@ -52,4 +57,5 @@ async def get_expanded_property_data(
         path = f"/supplemental/national/{offense}"
 
     app_ctx: AppContext = ctx.lifespan_context
-    return await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})
+    raw = await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})
+    return process_crime_response(raw, aggregate=aggregate if data_type == "counts" else "monthly")
