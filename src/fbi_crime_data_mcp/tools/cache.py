@@ -7,6 +7,8 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
+from fastmcp.server.middleware.caching import ResponseCachingMiddleware
+
 from ..constants import CACHE_DIR as _CACHE_DIR
 from ..server import mcp
 
@@ -139,8 +141,62 @@ def _cache_status() -> str:
         "oldest_entry": oldest.isoformat() if oldest else None,
         "newest_entry": newest.isoformat() if newest else None,
         "collections": collections,
+        "session_hit_rate": _session_hit_rate(),
     }
     return json.dumps(result, indent=2)
+
+
+def _session_hit_rate() -> dict:
+    """Gather in-memory cache hit/miss stats from middleware (current session only)."""
+    collection_names = [
+        "list_tools",
+        "list_resources",
+        "list_prompts",
+        "read_resource",
+        "get_prompt",
+        "call_tool",
+    ]
+    totals: dict[str, dict[str, int]] = {}
+    for mw in mcp.middleware:
+        if not isinstance(mw, ResponseCachingMiddleware):
+            continue
+        stats = mw.statistics()
+        for name in collection_names:
+            col_stats = getattr(stats, name, None)
+            if col_stats is None:
+                continue
+            hits = col_stats.get.hit
+            misses = col_stats.get.miss
+            if hits == 0 and misses == 0:
+                continue
+            if name not in totals:
+                totals[name] = {"hits": 0, "misses": 0}
+            totals[name]["hits"] += hits
+            totals[name]["misses"] += misses
+
+    total_hits = sum(c["hits"] for c in totals.values())
+    total_misses = sum(c["misses"] for c in totals.values())
+    total_requests = total_hits + total_misses
+
+    per_collection = {}
+    for name, counts in totals.items():
+        col_total = counts["hits"] + counts["misses"]
+        per_collection[name] = {
+            **counts,
+            "total": col_total,
+            "hit_rate_pct": round(counts["hits"] / col_total * 100, 1),
+        }
+
+    return {
+        "note": "In-memory stats for current server session only (resets on restart)",
+        "hits": total_hits,
+        "misses": total_misses,
+        "total": total_requests,
+        "hit_rate_pct": round(total_hits / total_requests * 100, 1)
+        if total_requests
+        else None,
+        "collections": per_collection,
+    }
 
 
 def _clear_cache(expired_only: bool) -> str:
