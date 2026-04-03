@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -185,10 +186,10 @@ def _clear_cache(expired_only: bool) -> str:
         if not expired_only:
             # Remove the collection directory and info file
             try:
-                collection_dir.rmdir()
+                shutil.rmtree(collection_dir)
+                info_file.unlink(missing_ok=True)
             except OSError:
                 pass
-            info_file.unlink(missing_ok=True)
 
     action = "expired entries" if expired_only else "all entries"
     result = {
