@@ -32,6 +32,7 @@ mcp = FastMCP(
 from .tools import (  # noqa: E402, F401
     agency,
     arrests,
+    cache,
     employment,
     hate_crime,
     homicide,
