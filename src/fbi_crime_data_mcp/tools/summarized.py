@@ -44,7 +44,8 @@ async def get_summarized_crime_data(
         return "Invalid aggregate. Must be 'yearly' or 'monthly'."
 
     for err in (
-        validate_offense(offense, SRS_OFFENSES, "offense code"),
+        validate_offense(offense, SRS_OFFENSES, "offense code",
+                        f"Valid codes: {_offense_list}"),
         validate_level(level),
         validate_state_required(level, state),
         validate_ori_required(level, ori),

@@ -97,6 +97,11 @@ class TestValidateMmYyyy:
         assert "mm-yyyy" in validate_mm_yyyy("2020", "from_date")
         assert "mm-yyyy" in validate_mm_yyyy("January 2020", "from_date")
 
+    def test_invalid_month(self):
+        assert validate_mm_yyyy("00-2020", "from_date") is not None
+        assert validate_mm_yyyy("13-2020", "from_date") is not None
+        assert validate_mm_yyyy("99-9999", "from_date") is not None
+
     def test_includes_param_name(self):
         err = validate_mm_yyyy("bad", "from_date")
         assert "from_date" in err
@@ -127,3 +132,14 @@ class TestValidateOffense:
         err = validate_offense("Z", codes, "test code")
         assert "Invalid test code" in err
         assert "'Z'" in err
+
+    def test_invalid_with_hint(self):
+        codes = {"A": "Alpha", "B": "Beta"}
+        err = validate_offense("Z", codes, "test code", "Try 'A' or 'B'.")
+        assert "Invalid test code" in err
+        assert "'Z'" in err
+        assert "Try 'A' or 'B'." in err
+
+    def test_valid_ignores_hint(self):
+        codes = {"A": "Alpha", "B": "Beta"}
+        assert validate_offense("A", codes, "test code", "some hint") is None

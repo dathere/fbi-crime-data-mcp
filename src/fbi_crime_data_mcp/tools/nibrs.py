@@ -44,7 +44,8 @@ async def get_nibrs_data(
     """
     for err in (
         validate_aggregate(data_type, aggregate),
-        validate_offense(offense, NIBRS_OFFENSES, "NIBRS offense code"),
+        validate_offense(offense, NIBRS_OFFENSES, "NIBRS offense code",
+                        "Common codes: 09A (Murder), 11A (Rape), 120 (Robbery), 13A (Aggravated Assault), 220 (Burglary), 23H (All Other Larceny), 240 (Motor Vehicle Theft), 200 (Arson), 35A (Drug/Narcotic Violations), 520 (Weapon Law Violations)."),
         validate_level(level),
         validate_data_type(data_type),
         validate_state_required(level, state),

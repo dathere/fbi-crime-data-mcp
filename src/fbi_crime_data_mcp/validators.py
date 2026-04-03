@@ -6,7 +6,7 @@ import re
 
 from .constants import US_STATES
 
-_MM_YYYY_RE = re.compile(r"^\d{2}-\d{4}$")
+_MM_YYYY_RE = re.compile(r"^(0[1-9]|1[0-2])-\d{4}$")
 _YYYY_RE = re.compile(r"^\d{4}$")
 
 
@@ -66,10 +66,13 @@ def validate_yyyy(value: str, param_name: str) -> str | None:
     return None
 
 
-def validate_offense(code: str, valid_codes: dict[str, str], label: str) -> str | None:
+def validate_offense(code: str, valid_codes: dict[str, str], label: str, hint: str = "") -> str | None:
     """Return error string if offense code is invalid, else None."""
     if code not in valid_codes:
-        return f"Invalid {label} '{code}'."
+        msg = f"Invalid {label} '{code}'."
+        if hint:
+            msg = f"{msg} {hint}"
+        return msg
     return None
 
 

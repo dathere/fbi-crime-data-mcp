@@ -46,7 +46,8 @@ async def get_expanded_property_data(
     """.format(offenses=_offense_list)
     for err in (
         validate_aggregate(data_type, aggregate),
-        validate_offense(offense, SUPPLEMENTAL_OFFENSES, "offense code"),
+        validate_offense(offense, SUPPLEMENTAL_OFFENSES, "offense code",
+                        f"Valid codes: {_offense_list}"),
         validate_level(level),
         validate_data_type(data_type),
         validate_state_required(level, state),

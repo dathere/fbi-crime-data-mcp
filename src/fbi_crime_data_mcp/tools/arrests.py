@@ -48,7 +48,8 @@ async def get_arrest_data(
     """
     for err in (
         validate_aggregate(data_type, aggregate),
-        validate_offense(offense, ARREST_OFFENSES, "arrest offense code"),
+        validate_offense(offense, ARREST_OFFENSES, "arrest offense code",
+                        "Common codes: all (All), 11 (Murder), 30 (Robbery), 50 (Assault), 60 (Burglary), 70 (Larceny), 150 (Drug Abuse), 260 (DUI)."),
         validate_level(level),
         validate_data_type(data_type),
         validate_state_required(level, state),
