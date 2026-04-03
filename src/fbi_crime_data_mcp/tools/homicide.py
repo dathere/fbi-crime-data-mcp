@@ -30,7 +30,7 @@ async def get_expanded_homicide_data(
         ori: Agency ORI code (required when level is "agency")
         aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (raw monthly data). Only applies when data_type is "counts".
     """
-    if aggregate not in ("yearly", "monthly"):
+    if data_type == "counts" and aggregate not in ("yearly", "monthly"):
         return "Invalid aggregate. Must be 'yearly' or 'monthly'."
     if level not in ("national", "state", "agency"):
         return "Invalid level. Must be 'national', 'state', or 'agency'."

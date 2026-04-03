@@ -34,7 +34,7 @@ async def get_expanded_property_data(
         ori: Agency ORI code (required when level is "agency")
         aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (raw monthly data). Only applies when data_type is "counts".
     """.format(offenses=_offense_list)
-    if aggregate not in ("yearly", "monthly"):
+    if data_type == "counts" and aggregate not in ("yearly", "monthly"):
         return "Invalid aggregate. Must be 'yearly' or 'monthly'."
     if offense not in SUPPLEMENTAL_OFFENSES:
         return f"Invalid offense code '{offense}'. Valid codes: {_offense_list}"

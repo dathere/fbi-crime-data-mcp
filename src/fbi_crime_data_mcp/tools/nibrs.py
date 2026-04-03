@@ -32,7 +32,7 @@ async def get_nibrs_data(
         ori: Agency ORI code (required when level is "agency")
         aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (raw monthly data). Only applies when data_type is "counts".
     """
-    if aggregate not in ("yearly", "monthly"):
+    if data_type == "counts" and aggregate not in ("yearly", "monthly"):
         return "Invalid aggregate. Must be 'yearly' or 'monthly'."
     if offense not in NIBRS_OFFENSES:
         return f"Invalid NIBRS offense code '{offense}'. Common codes: 09A (Murder), 11A (Rape), 120 (Robbery), 13A (Aggravated Assault), 220 (Burglary), 23H (All Other Larceny), 240 (Motor Vehicle Theft), 200 (Arson), 35A (Drug/Narcotic Violations), 520 (Weapon Law Violations)."
