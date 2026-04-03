@@ -47,28 +47,97 @@ def process_crime_response(raw_json: str, aggregate: str = "yearly") -> str:
 def filter_agencies_by_name(raw_json: str, name_filter: str) -> str:
     """Filter agency list by case-insensitive substring match on agency_name.
 
+    Handles both flat arrays and nested dicts (by_state returns
+    ``{"COUNTY": [agencies...], ...}``).
+
     Args:
-        raw_json: JSON string from api_get (expected JSON array of agency objects).
+        raw_json: JSON string from api_get — a JSON array or a dict of arrays.
         name_filter: Substring to match against agency_name field.
     """
-    if not raw_json.startswith("["):
+    try:
+        data = json.loads(raw_json)
+    except (json.JSONDecodeError, TypeError):
         return raw_json
+
+    needle = name_filter.lower()
+
+    if isinstance(data, list):
+        filtered = [
+            a
+            for a in data
+            if isinstance(a, dict)
+            and needle in a.get("agency_name", "").lower()
+        ]
+        return json.dumps(filtered, indent=2)
+
+    if isinstance(data, dict):
+        # Only filter if this is actually a dict-of-arrays; pass through otherwise
+        has_list_groups = any(isinstance(v, list) for v in data.values())
+        if not has_list_groups:
+            return raw_json
+        filtered = {}
+        for group, agencies in data.items():
+            if not isinstance(agencies, list):
+                continue
+            matches = [
+                a
+                for a in agencies
+                if isinstance(a, dict)
+                and needle in a.get("agency_name", "").lower()
+            ]
+            if matches:
+                filtered[group] = matches
+        return json.dumps(filtered, indent=2)
+
+    return raw_json
+
+
+def paginate_response(raw_json: str, offset: int, limit: int) -> str:
+    """Apply offset/limit pagination to a JSON array or dict-of-arrays response.
+
+    For flat arrays, slices the list directly.  For dicts (by_state grouped
+    responses), flattens all agencies across groups, slices, and returns the
+    page with a metadata wrapper.
+
+    Args:
+        raw_json: JSON string — array or dict of arrays.
+        offset: Number of items to skip (must be >= 0).
+        limit: Maximum number of items to return (must be > 0).
+    """
+    if offset < 0:
+        return f"Invalid offset ({offset}). Must be >= 0."
+    if limit <= 0:
+        return f"Invalid limit ({limit}). Must be > 0."
 
     try:
         data = json.loads(raw_json)
     except (json.JSONDecodeError, TypeError):
         return raw_json
 
-    if not isinstance(data, list):
-        return raw_json
+    if isinstance(data, list):
+        total = len(data)
+        page = data[offset : offset + limit]
+        result = {"total": total, "offset": offset, "limit": limit, "data": page}
+        return json.dumps(result, indent=2)
 
-    needle = name_filter.lower()
-    filtered = [
-        agency
-        for agency in data
-        if isinstance(agency, dict) and needle in agency.get("agency_name", "").lower()
-    ]
-    return json.dumps(filtered, indent=2)
+    if isinstance(data, dict):
+        # Flatten grouped agencies, preserving group info
+        flat: list[dict] = []
+        for group, agencies in data.items():
+            if not isinstance(agencies, list):
+                continue
+            for agency in agencies:
+                if isinstance(agency, dict):
+                    entry = {**agency, "_pagination_group": group}
+                    flat.append(entry)
+        if not flat:
+            return raw_json
+        total = len(flat)
+        page = flat[offset : offset + limit]
+        result = {"total": total, "offset": offset, "limit": limit, "data": page}
+        return json.dumps(result, indent=2)
+
+    return raw_json
 
 
 def _trim_response(data: dict) -> dict:

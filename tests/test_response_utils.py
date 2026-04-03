@@ -4,6 +4,7 @@ import json
 
 from fbi_crime_data_mcp.response_utils import (
     filter_agencies_by_name,
+    paginate_response,
     process_crime_response,
 )
 
@@ -264,6 +265,85 @@ class TestFilterAgenciesByName:
     def test_error_passthrough(self):
         assert filter_agencies_by_name("Error: timeout", "test") == "Error: timeout"
 
-    def test_non_list_passthrough(self):
-        raw = '{"key": "value"}'
+    def test_nested_dict_filtering(self):
+        """by_state responses are dicts of county → agency arrays."""
+        grouped = {
+            "HUDSON": [
+                {"agency_name": "Secaucus Police Department"},
+                {"agency_name": "Union City Police Department"},
+            ],
+            "ESSEX": [
+                {"agency_name": "Newark Police Department"},
+            ],
+        }
+        raw = json.dumps(grouped)
+        result = json.loads(filter_agencies_by_name(raw, "Newark"))
+        assert "ESSEX" in result
+        assert len(result["ESSEX"]) == 1
+        assert "HUDSON" not in result
+
+    def test_nested_dict_multiple_groups(self):
+        grouped = {
+            "HUDSON": [{"agency_name": "Secaucus Police Department"}],
+            "ESSEX": [{"agency_name": "East Newark Police Department"}],
+        }
+        raw = json.dumps(grouped)
+        result = json.loads(filter_agencies_by_name(raw, "Police"))
+        assert len(result) == 2
+
+    def test_nested_dict_no_matches(self):
+        grouped = {
+            "HUDSON": [{"agency_name": "Secaucus Police Department"}],
+        }
+        raw = json.dumps(grouped)
+        result = json.loads(filter_agencies_by_name(raw, "Hoboken"))
+        assert result == {}
+
+    def test_non_dict_non_list_passthrough(self):
+        raw = '"just a string"'
         assert filter_agencies_by_name(raw, "test") == raw
+
+
+class TestPaginateResponse:
+    def test_flat_array_pagination(self):
+        items = [{"name": f"item_{i}"} for i in range(10)]
+        raw = json.dumps(items)
+        result = json.loads(paginate_response(raw, offset=2, limit=3))
+        assert result["total"] == 10
+        assert result["offset"] == 2
+        assert result["limit"] == 3
+        assert len(result["data"]) == 3
+        assert result["data"][0]["name"] == "item_2"
+
+    def test_flat_array_offset_beyond_end(self):
+        items = [{"name": "a"}, {"name": "b"}]
+        raw = json.dumps(items)
+        result = json.loads(paginate_response(raw, offset=5, limit=10))
+        assert result["total"] == 2
+        assert result["data"] == []
+
+    def test_nested_dict_pagination(self):
+        grouped = {
+            "GROUP_A": [{"agency_name": "A1"}, {"agency_name": "A2"}],
+            "GROUP_B": [{"agency_name": "B1"}],
+        }
+        raw = json.dumps(grouped)
+        result = json.loads(paginate_response(raw, offset=0, limit=2))
+        assert result["total"] == 3
+        assert len(result["data"]) == 2
+        # Flattened items get _pagination_group key
+        assert "_pagination_group" in result["data"][0]
+
+    def test_nested_dict_offset(self):
+        grouped = {
+            "GROUP_A": [{"agency_name": "A1"}, {"agency_name": "A2"}],
+            "GROUP_B": [{"agency_name": "B1"}],
+        }
+        raw = json.dumps(grouped)
+        result = json.loads(paginate_response(raw, offset=2, limit=10))
+        assert result["total"] == 3
+        assert len(result["data"]) == 1
+        assert result["data"][0]["agency_name"] == "B1"
+
+    def test_error_passthrough(self):
+        assert paginate_response("Error: timeout", 0, 10) == "Error: timeout"

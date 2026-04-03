@@ -9,7 +9,7 @@ from pathlib import Path
 
 from fastmcp.server.middleware.caching import ResponseCachingMiddleware
 
-from ..constants import CACHE_DIR as _CACHE_DIR
+from ..constants import CACHE_DIR as _CACHE_DIR, SPILLOVER_DIR as _SPILLOVER_DIR
 from ..server import mcp
 
 
@@ -142,8 +142,27 @@ def _cache_status() -> str:
         "newest_entry": newest.isoformat() if newest else None,
         "collections": collections,
         "session_hit_rate": _session_hit_rate(),
+        "spillover": _spillover_stats(),
     }
     return json.dumps(result, indent=2)
+
+
+def _spillover_stats() -> dict:
+    """Count spillover files and their total size."""
+    if not _SPILLOVER_DIR.is_dir():
+        return {"files": 0, "size_kb": 0}
+    files = list(_SPILLOVER_DIR.glob("*.json"))
+    def _safe_size(f: Path) -> int:
+        try:
+            return f.stat().st_size
+        except OSError:
+            return 0
+
+    total_bytes = sum(_safe_size(f) for f in files)
+    return {
+        "files": len(files),
+        "size_kb": round(total_bytes / 1024, 1),
+    }
 
 
 def _session_hit_rate() -> dict:
@@ -250,11 +269,22 @@ def _clear_cache(expired_only: bool) -> str:
             except OSError:
                 pass
 
+    # Clear spillover files on full clear
+    spillover_removed = 0
+    if not expired_only and _SPILLOVER_DIR.is_dir():
+        spillover_count = len(list(_SPILLOVER_DIR.glob("*.json")))
+        try:
+            shutil.rmtree(_SPILLOVER_DIR)
+            spillover_removed = spillover_count
+        except OSError:
+            pass
+
     action = "expired entries" if expired_only else "all entries"
     result = {
         "action": f"Cleared {action}",
         "removed": removed,
         "kept": kept if expired_only else 0,
         "freed_kb": round(freed_bytes / 1024, 1),
+        "spillover_removed": spillover_removed,
     }
     return json.dumps(result, indent=2)

@@ -13,6 +13,7 @@ from key_value.aio.stores.filetree import (
 
 from .api_client import app_lifespan
 from .constants import CACHE_DIR
+from .spillover import ResponseSpilloverMiddleware
 
 mcp = FastMCP(
     "FBI Crime Data Explorer",
@@ -98,6 +99,9 @@ mcp.add_middleware(
         ),
     )
 )
+
+# Spillover: save oversized tool responses to disk instead of truncating
+mcp.add_middleware(ResponseSpilloverMiddleware())
 
 
 def main():
