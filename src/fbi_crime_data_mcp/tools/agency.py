@@ -64,8 +64,8 @@ async def lookup_agency(
     if offset is not None or limit is not None:
         result = paginate_response(
             result,
-            offset=offset or 0,
-            limit=limit or 100,
+            offset=offset if offset is not None else 0,
+            limit=limit if limit is not None else 100,
         )
 
     return result

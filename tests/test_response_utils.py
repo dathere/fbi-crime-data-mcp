@@ -331,8 +331,8 @@ class TestPaginateResponse:
         result = json.loads(paginate_response(raw, offset=0, limit=2))
         assert result["total"] == 3
         assert len(result["data"]) == 2
-        # Flattened items get _group key
-        assert "_group" in result["data"][0]
+        # Flattened items get _pagination_group key
+        assert "_pagination_group" in result["data"][0]
 
     def test_nested_dict_offset(self):
         grouped = {

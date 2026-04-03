@@ -119,7 +119,7 @@ def paginate_response(raw_json: str, offset: int, limit: int) -> str:
                 continue
             for agency in agencies:
                 if isinstance(agency, dict):
-                    entry = {**agency, "_group": group}
+                    entry = {**agency, "_pagination_group": group}
                     flat.append(entry)
         total = len(flat)
         page = flat[offset : offset + limit]

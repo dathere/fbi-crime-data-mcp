@@ -152,7 +152,13 @@ def _spillover_stats() -> dict:
     if not _SPILLOVER_DIR.is_dir():
         return {"files": 0, "size_kb": 0}
     files = list(_SPILLOVER_DIR.glob("*.json"))
-    total_bytes = sum(f.stat().st_size for f in files)
+    def _safe_size(f: Path) -> int:
+        try:
+            return f.stat().st_size
+        except OSError:
+            return 0
+
+    total_bytes = sum(_safe_size(f) for f in files)
     return {
         "files": len(files),
         "size_kb": round(total_bytes / 1024, 1),
