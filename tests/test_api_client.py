@@ -38,11 +38,20 @@ class TestRateLimiter:
         rl._timestamps[0] = time.monotonic() - 2
         assert rl.check() is None  # old timestamp expired
 
-    def test_zero_max_requests_empty_deque(self):
-        rl = RateLimiter(max_requests=0)
+    def test_zero_max_requests_raises(self):
+        with pytest.raises(ValueError, match="max_requests must be at least 1"):
+            RateLimiter(max_requests=0)
+
+    def test_negative_max_requests_raises(self):
+        with pytest.raises(ValueError, match="max_requests must be at least 1"):
+            RateLimiter(max_requests=-1)
+
+    def test_message_reflects_window(self):
+        rl = RateLimiter(max_requests=1, window_seconds=60)
+        rl.record()
         msg = rl.check()
-        assert msg is not None
-        assert "Rate limit reached" in msg
+        assert "60 seconds" in msg
+        assert "per hour" not in msg
 
     def test_record_appends_timestamp(self):
         rl = RateLimiter()
@@ -104,7 +113,9 @@ class TestApiGet:
 
     async def test_rate_limited(self, mock_client):
         client, _ = mock_client
-        ctx = AppContext(client=client, rate_limiter=RateLimiter(max_requests=0))
+        rl = RateLimiter(max_requests=1)
+        rl.record()  # exhaust the single allowed request
+        ctx = AppContext(client=client, rate_limiter=rl)
         result = await ctx.api_get("/test")
         assert "Rate limit reached" in result
 

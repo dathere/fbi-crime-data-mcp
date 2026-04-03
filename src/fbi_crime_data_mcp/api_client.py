@@ -20,6 +20,8 @@ class RateLimiter:
     """Sliding-window rate limiter (1000 requests per hour by default)."""
 
     def __init__(self, max_requests: int = 1000, window_seconds: int = 3600):
+        if max_requests < 1:
+            raise ValueError("max_requests must be at least 1")
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self._timestamps: deque[float] = deque()
@@ -31,13 +33,15 @@ class RateLimiter:
         while self._timestamps and self._timestamps[0] < cutoff:
             self._timestamps.popleft()
         if len(self._timestamps) >= self.max_requests:
-            if self._timestamps:
-                oldest = self._timestamps[0]
-                wait = int(oldest + self.window_seconds - now) + 1
-            else:
-                wait = self.window_seconds
+            oldest = self._timestamps[0]
+            wait = int(oldest + self.window_seconds - now) + 1
+            window_desc = (
+                f"{self.window_seconds // 3600} hour(s)"
+                if self.window_seconds >= 3600
+                else f"{self.window_seconds} seconds"
+            )
             return (
-                f"Rate limit reached ({self.max_requests} requests per hour). "
+                f"Rate limit reached ({self.max_requests} requests per {window_desc}). "
                 f"Try again in ~{wait} seconds."
             )
         return None
