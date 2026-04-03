@@ -60,3 +60,11 @@ class TestSummarizedCrimeData:
     async def test_monthly_aggregate_accepted(self, ctx, app_ctx):
         r = await get_summarized_crime_data("V", "national", "01-2020", "12-2020", aggregate="monthly", ctx=ctx)
         assert "Invalid" not in r
+
+    async def test_invalid_from_date(self, ctx):
+        r = await get_summarized_crime_data("V", "national", "2020", "12-2020", ctx=ctx)
+        assert "mm-yyyy" in r
+
+    async def test_invalid_to_date(self, ctx):
+        r = await get_summarized_crime_data("V", "national", "01-2020", "bad", ctx=ctx)
+        assert "mm-yyyy" in r

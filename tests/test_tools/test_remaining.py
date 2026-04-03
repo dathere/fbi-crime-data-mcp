@@ -33,6 +33,14 @@ class TestCrimeTrends:
             "/trends/national", {"from": "2015", "to": "2022"}
         )
 
+    async def test_invalid_from_year(self, ctx):
+        r = await get_crime_trends(from_year="01-2020", ctx=ctx)
+        assert "yyyy" in r
+
+    async def test_invalid_to_year(self, ctx):
+        r = await get_crime_trends(to_year="bad", ctx=ctx)
+        assert "yyyy" in r
+
 
 # ── Police Employment ────────────────────────────────────────────────────────
 
@@ -79,6 +87,14 @@ class TestPoliceEmployment:
         app_ctx.api_get.assert_called_once_with(
             "/pe/region/south", {"from": "2015", "to": "2022"}
         )
+
+    async def test_invalid_from_year(self, ctx):
+        r = await get_police_employment("national", "01-2020", "2022", ctx=ctx)
+        assert "yyyy" in r
+
+    async def test_invalid_to_year(self, ctx):
+        r = await get_police_employment("national", "2015", "bad", ctx=ctx)
+        assert "yyyy" in r
 
 
 # ── Hate Crime ───────────────────────────────────────────────────────────────
@@ -150,6 +166,14 @@ class TestHateCrime:
             "/hate-crime/national", {"type": "totals", "from": "01-2020", "to": "12-2020"}
         )
 
+    async def test_invalid_from_date(self, ctx):
+        r = await get_hate_crime_data("national", "2020", "12-2020", ctx=ctx)
+        assert "mm-yyyy" in r
+
+    async def test_invalid_to_date(self, ctx):
+        r = await get_hate_crime_data("national", "01-2020", "2020", ctx=ctx)
+        assert "mm-yyyy" in r
+
 
 # ── Expanded Homicide ────────────────────────────────────────────────────────
 
@@ -205,6 +229,14 @@ class TestHomicide:
             "/shr/national", {"type": "totals", "from": "01-2020", "to": "12-2020"}
         )
 
+    async def test_invalid_from_date(self, ctx):
+        r = await get_expanded_homicide_data("national", "counts", "2020", "12-2020", ctx=ctx)
+        assert "mm-yyyy" in r
+
+    async def test_invalid_to_date(self, ctx):
+        r = await get_expanded_homicide_data("national", "counts", "01-2020", "bad", ctx=ctx)
+        assert "mm-yyyy" in r
+
 
 # ── Expanded Property Data ───────────────────────────────────────────────────
 
@@ -258,6 +290,14 @@ class TestPropertyData:
             r = await get_expanded_property_data(code, "national", "counts", "01-2020", "12-2020", ctx=ctx)
             assert "Invalid" not in r
 
+    async def test_invalid_from_date(self, ctx):
+        r = await get_expanded_property_data("NB", "national", "counts", "2020", "12-2020", ctx=ctx)
+        assert "mm-yyyy" in r
+
+    async def test_invalid_to_date(self, ctx):
+        r = await get_expanded_property_data("NB", "national", "counts", "01-2020", "bad", ctx=ctx)
+        assert "mm-yyyy" in r
+
 
 # ── LEOKA ────────────────────────────────────────────────────────────────────
 
@@ -294,6 +334,11 @@ class TestLeoka:
         app_ctx.api_get.assert_called_once_with(
             "/leoka/monthly", {"year": "2022", "month": "11"}
         )
+
+    async def test_ytd_ignores_month(self, ctx, app_ctx):
+        """Month param should be ignored (not validated) when report_type is ytd."""
+        await get_leoka_data("ytd", 2022, month=5, ctx=ctx)
+        app_ctx.api_get.assert_called_once_with("/leoka/ytd", {"year": "2022"})
 
 
 # ── LESDC ────────────────────────────────────────────────────────────────────

@@ -55,3 +55,11 @@ class TestNibrsData:
         app_ctx.api_get.assert_called_once_with(
             "/nibrs/national/09A", {"type": "totals", "from": "01-2020", "to": "12-2020"}
         )
+
+    async def test_invalid_from_date(self, ctx):
+        r = await get_nibrs_data("09A", "national", "2020", "12-2020", ctx=ctx)
+        assert "mm-yyyy" in r
+
+    async def test_invalid_to_date(self, ctx):
+        r = await get_nibrs_data("09A", "national", "01-2020", "bad", ctx=ctx)
+        assert "mm-yyyy" in r

@@ -4,6 +4,7 @@ from fastmcp import Context
 
 from ..api_client import AppContext
 from ..server import mcp
+from ..validators import validate_yyyy
 
 
 @mcp.tool()
@@ -20,8 +21,14 @@ async def get_crime_trends(
     """
     params: dict[str, str] = {}
     if from_year:
+        err = validate_yyyy(from_year, "from_year")
+        if err:
+            return err
         params["from"] = from_year
     if to_year:
+        err = validate_yyyy(to_year, "to_year")
+        if err:
+            return err
         params["to"] = to_year
 
     app_ctx: AppContext = ctx.lifespan_context

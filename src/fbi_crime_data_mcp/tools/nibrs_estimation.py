@@ -3,8 +3,9 @@
 from fastmcp import Context
 
 from ..api_client import AppContext
-from ..constants import NIBRS_OFFENSES, NIBRS_REGIONS, NIBRS_SIZE_GROUPS, US_STATES
+from ..constants import NIBRS_OFFENSES, NIBRS_REGIONS, NIBRS_SIZE_GROUPS
 from ..server import mcp
+from ..validators import validate_offense, validate_state
 
 
 @mcp.tool()
@@ -31,8 +32,9 @@ async def get_nibrs_estimation(
         agency_type_location: "C" (City) or "N" (County). Required when level is "agency-type".
         size_group: Size group "1"-"8" (1=Cities 250K+, 6=Cities under 10K, 7=MSA Counties, 8=Non-MSA Counties). Required when level is "size".
     """
-    if offense not in NIBRS_OFFENSES:
-        return f"Invalid NIBRS offense code '{offense}'."
+    err = validate_offense(offense, NIBRS_OFFENSES, "NIBRS offense code")
+    if err:
+        return err
     if level not in ("national", "state", "region", "agency-type", "size"):
         return "Invalid level. Must be 'national', 'state', 'region', 'agency-type', or 'size'."
 
@@ -41,8 +43,9 @@ async def get_nibrs_estimation(
     elif level == "state":
         if not state:
             return "Parameter 'state' is required when level is 'state'."
-        if state.upper() not in US_STATES:
-            return f"Invalid state '{state}'."
+        err = validate_state(state)
+        if err:
+            return err
         path = f"/nibrs-estimation/state/{state.upper()}/{offense}"
     elif level == "region":
         if not region or region not in NIBRS_REGIONS:
