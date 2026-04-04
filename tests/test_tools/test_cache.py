@@ -453,14 +453,16 @@ class TestSaveAndLoadPersistedStats:
         import fbi_crime_data_mcp.api_client as api_mod
 
         stats_file = tmp_path / "readonly" / "stats.json"
-        (tmp_path / "readonly").mkdir()
-        (tmp_path / "readonly").chmod(0o444)
+        readonly_dir = tmp_path / "readonly"
+        readonly_dir.mkdir()
+        readonly_dir.chmod(0o444)
         monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
         monkeypatch.setattr(api_mod, "_collect_stats", lambda s: {})
 
-        _save_stats(MagicMock())  # should not raise
-
-        (tmp_path / "readonly").chmod(0o755)
+        try:
+            _save_stats(MagicMock())  # should not raise
+        finally:
+            readonly_dir.chmod(0o755)
 
     def test_load_persisted_stats_mixed_valid_invalid(self, tmp_path, monkeypatch):
         """Valid entries are kept while invalid ones are dropped."""

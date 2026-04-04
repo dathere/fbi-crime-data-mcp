@@ -129,11 +129,12 @@ class TestSpilloverMiddleware:
         mw = ResponseSpilloverMiddleware(max_chars=100, preview_chars=50)
         call_next = AsyncMock(return_value=_make_result("w" * 200))
 
-        result = await mw.on_call_tool(_make_context(), call_next)
-        text = result.content[0].text
-        assert "filesystem error" in text or "PREVIEW" in text
-
-        spillover_dir.chmod(0o755)
+        try:
+            result = await mw.on_call_tool(_make_context(), call_next)
+            text = result.content[0].text
+            assert "filesystem error" in text or "PREVIEW" in text
+        finally:
+            spillover_dir.chmod(0o755)
 
     async def test_filename_contains_tool_name(self, tmp_path, monkeypatch):
         import fbi_crime_data_mcp.spillover as mod

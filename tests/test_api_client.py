@@ -11,7 +11,7 @@ import httpx
 import pytest
 import respx
 
-from fbi_crime_data_mcp.api_client import AppContext, RateLimiter, _collect_stats, _get_api_key, _save_stats
+from fbi_crime_data_mcp.api_client import AppContext, RateLimiter, _collect_stats, _get_api_key
 
 # ── RateLimiter ──────────────────────────────────────────────────────────────
 
@@ -281,29 +281,3 @@ class TestCollectStats:
         server.middleware = [fake_mw]
         result = _collect_stats(server)
         assert result == {}
-
-
-# ── _save_stats error path ──────────────────────────────────────────────────
-
-
-class TestSaveStatsErrorPath:
-    def test_save_stats_handles_write_failure(self, tmp_path, monkeypatch):
-        """_save_stats logs warning but doesn't crash on OSError."""
-        from unittest.mock import MagicMock
-
-        import fbi_crime_data_mcp.api_client as api_mod
-
-        # Point to a read-only directory to cause write failure
-        stats_file = tmp_path / "no_write" / "stats.json"
-        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
-        # Make parent dir read-only
-        (tmp_path / "no_write").mkdir()
-        (tmp_path / "no_write").chmod(0o444)
-
-        monkeypatch.setattr(api_mod, "_collect_stats", lambda server: {})
-
-        # Should not raise
-        _save_stats(MagicMock())
-
-        # Cleanup permissions for tmp_path cleanup
-        (tmp_path / "no_write").chmod(0o755)
