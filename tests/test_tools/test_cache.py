@@ -235,31 +235,12 @@ class TestSaveAndCollectStats:
         stats_file = tmp_path / "stats.json"
         monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
 
-        # Create a mock server with a mock caching middleware
-        mock_col_stats = MagicMock()
-        mock_col_stats.get.hit = 5
-        mock_col_stats.get.miss = 3
-
-        mock_stats = MagicMock()
-        mock_stats.call_tool = mock_col_stats
-        # Return None for other collections
-        mock_stats.list_tools = None
-        mock_stats.list_resources = None
-        mock_stats.list_prompts = None
-        mock_stats.read_resource = None
-        mock_stats.get_prompt = None
-
-        mock_mw = MagicMock(spec=["statistics"])
-        mock_mw.statistics.return_value = mock_stats
-
-        mock_server = MagicMock()
-        mock_server.middleware = [mock_mw]
-
         monkeypatch.setattr(
             api_mod, "_collect_stats",
             lambda server: {"call_tool": {"hits": 5, "misses": 3}},
         )
 
+        mock_server = MagicMock()
         _save_stats(mock_server)
 
         assert stats_file.exists()
