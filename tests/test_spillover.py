@@ -118,23 +118,23 @@ class TestSpilloverMiddleware:
         assert out is result  # passed through unchanged
 
     async def test_write_failure_returns_preview(self, tmp_path, monkeypatch):
+        import asyncio
+        from unittest.mock import patch
+
         import fbi_crime_data_mcp.spillover as mod
 
-        # Point to a read-only dir so write fails
         spillover_dir = tmp_path / "spillover"
-        spillover_dir.mkdir()
-        spillover_dir.chmod(0o444)
         monkeypatch.setattr(mod, "SPILLOVER_DIR", spillover_dir)
 
         mw = ResponseSpilloverMiddleware(max_chars=100, preview_chars=50)
         call_next = AsyncMock(return_value=_make_result("w" * 200))
 
-        try:
+        # Mock asyncio.to_thread to raise OSError, simulating write failure
+        with patch.object(asyncio, "to_thread", side_effect=OSError("disk full")):
             result = await mw.on_call_tool(_make_context(), call_next)
             text = result.content[0].text
-            assert "filesystem error" in text or "PREVIEW" in text
-        finally:
-            spillover_dir.chmod(0o755)
+            assert "filesystem error" in text
+            assert "PREVIEW" in text
 
     async def test_filename_contains_tool_name(self, tmp_path, monkeypatch):
         import fbi_crime_data_mcp.spillover as mod
