@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-04-04
+
+### Added
+- `get_crime_trends` tool for querying national/state crime trend data
+- `get_cde_homepage_summary` tool for CDE homepage statistics
+- `read_spillover` tool for accessing oversized response files saved by spillover middleware
+- Persistent cache hit/miss statistics across server restarts
+- Codecov integration with coverage badge
+- Comprehensive test suite expanded to 392 tests (99% coverage)
+
+### Fixed
+- Spillover TOCTOU race condition using atomic file creation
+- Dynamic upper bound for year validation (no hardcoded future year)
+- `build_geo_path` hardened with assertion for invalid levels
+- Spillover middleware excludes `read_spillover` to prevent recursive spilling
+- Symlink path traversal protection in `read_spillover`
+- Workflow permissions for GitHub Actions security alerts
+- OSError tests use mocks instead of chmod (CI compatibility when running as root)
+
+### Changed
+- Homepage summary uses 1-day cache TTL
+- Default cache TTL for agency/incident data changed to 30-day
+- Concurrent API calls in homepage summary tool
+- Extracted shared helpers and deduplicated `_load_persisted_stats` and `collection_names`
+
 ## [0.2.0] - 2026-04-03
 
 ### Added
