@@ -11,7 +11,7 @@ import httpx
 import pytest
 import respx
 
-from fbi_crime_data_mcp.api_client import AppContext, RateLimiter, _get_api_key
+from fbi_crime_data_mcp.api_client import AppContext, RateLimiter, _collect_stats, _get_api_key
 
 # ── RateLimiter ──────────────────────────────────────────────────────────────
 
@@ -220,3 +220,64 @@ class TestApiGet:
         assert len(ctx.rate_limiter._timestamps) == 0
         await ctx.api_get("/test")
         assert len(ctx.rate_limiter._timestamps) == 1
+
+
+# ── _collect_stats ──────────────────────────────────────────────────────────
+
+
+class TestCollectStats:
+    def test_no_middleware(self):
+        from unittest.mock import MagicMock
+
+        server = MagicMock()
+        server.middleware = []
+        assert _collect_stats(server) == {}
+
+    def test_with_caching_middleware(self, monkeypatch):
+        from unittest.mock import MagicMock
+
+        from fbi_crime_data_mcp.api_client import CACHE_COLLECTION_NAMES
+
+        # Build a fake middleware with statistics
+        fake_mw = MagicMock(spec=["statistics"])
+        fake_mw.__class__ = type("FakeCachingMW", (), {})
+
+        # Make isinstance check pass
+
+        monkeypatch.setattr(
+            "fbi_crime_data_mcp.api_client.ResponseCachingMiddleware",
+            type(fake_mw),
+        )
+
+        # Build fake stats object
+        stats = MagicMock()
+        for name in CACHE_COLLECTION_NAMES:
+            col = MagicMock()
+            col.get.hit = 3
+            col.get.miss = 1
+            setattr(stats, name, col)
+        fake_mw.statistics.return_value = stats
+
+        server = MagicMock()
+        server.middleware = [fake_mw]
+        result = _collect_stats(server)
+        for name in CACHE_COLLECTION_NAMES:
+            assert result[name]["hits"] == 3
+            assert result[name]["misses"] == 1
+
+    def test_skips_none_col_stats(self, monkeypatch):
+        from unittest.mock import MagicMock
+
+        fake_mw = MagicMock()
+        monkeypatch.setattr(
+            "fbi_crime_data_mcp.api_client.ResponseCachingMiddleware",
+            type(fake_mw),
+        )
+        # Build stats where getattr returns None for all collection names
+        stats = MagicMock(spec=[])
+        fake_mw.statistics.return_value = stats
+
+        server = MagicMock()
+        server.middleware = [fake_mw]
+        result = _collect_stats(server)
+        assert result == {}
