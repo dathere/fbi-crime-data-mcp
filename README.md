@@ -1,5 +1,6 @@
 # FBI Crime Data MCP Server
 
+[![PyPI](https://img.shields.io/pypi/v/fbi-crime-data-mcp)](https://pypi.org/project/fbi-crime-data-mcp/)
 [![CI](https://github.com/dathere/fbi-crime-data-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/dathere/fbi-crime-data-mcp/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/dathere/fbi-crime-data-mcp/graph/badge.svg)](https://codecov.io/gh/dathere/fbi-crime-data-mcp)
 
