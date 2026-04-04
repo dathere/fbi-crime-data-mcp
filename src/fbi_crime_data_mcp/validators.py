@@ -6,7 +6,7 @@ import re
 
 from .constants import US_STATES
 
-_MM_YYYY_RE = re.compile(r"^(0[1-9]|1[0-2])-\d{4}$")
+_MM_YYYY_RE = re.compile(r"^(0[1-9]|1[0-2])-(\d{4})$")
 _YYYY_RE = re.compile(r"^\d{4}$")
 
 
@@ -66,6 +66,38 @@ def validate_yyyy(value: str, param_name: str) -> str | None:
     return None
 
 
+def validate_date_order_mm_yyyy(from_date: str, to_date: str) -> str | None:
+    """Return error string if from_date is after to_date (mm-yyyy format), else None.
+
+    Assumes both dates have already passed format validation.
+    """
+    fm = _MM_YYYY_RE.match(from_date)
+    tm = _MM_YYYY_RE.match(to_date)
+    if not fm or not tm:
+        return None  # format validation will catch this
+    from_tuple = (int(fm.group(2)), int(fm.group(1)))  # (year, month)
+    to_tuple = (int(tm.group(2)), int(tm.group(1)))
+    if from_tuple > to_tuple:
+        return (
+            f"from_date '{from_date}' is after to_date '{to_date}'. The start date must be on or before the end date."
+        )
+    return None
+
+
+def validate_date_order_yyyy(from_year: str, to_year: str) -> str | None:
+    """Return error string if from_year is after to_year (yyyy format), else None.
+
+    Assumes both years have already passed format validation.
+    """
+    if not _YYYY_RE.match(from_year) or not _YYYY_RE.match(to_year):
+        return None  # format validation will catch this
+    if int(from_year) > int(to_year):
+        return (
+            f"from_year '{from_year}' is after to_year '{to_year}'. The start year must be on or before the end year."
+        )
+    return None
+
+
 def validate_crime_data_params(
     *,
     level: str,
@@ -111,6 +143,7 @@ def validate_crime_data_params(
         validate_state(state),
         validate_mm_yyyy(from_date, "from_date"),
         validate_mm_yyyy(to_date, "to_date"),
+        validate_date_order_mm_yyyy(from_date, to_date),
     ):
         if err:
             return err

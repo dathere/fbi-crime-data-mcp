@@ -38,6 +38,10 @@ class TestCrimeTrends:
         r = await get_crime_trends(to_year="bad", ctx=ctx)
         assert "yyyy" in r
 
+    async def test_from_year_after_to_year(self, ctx):
+        r = await get_crime_trends(from_year="2022", to_year="2015", ctx=ctx)
+        assert "after" in r
+
 
 # ── Police Employment ────────────────────────────────────────────────────────
 
@@ -51,9 +55,9 @@ class TestPoliceEmployment:
         r = await get_police_employment("state", "2015", "2022", ctx=ctx)
         assert "'state' is required" in r
 
-    async def test_agency_requires_both(self, ctx):
+    async def test_agency_requires_state_when_both_missing(self, ctx):
         r = await get_police_employment("agency", "2015", "2022", ctx=ctx)
-        assert "'state' and 'ori' are required" in r
+        assert "'state' is required" in r
 
     async def test_agency_requires_ori(self, ctx):
         r = await get_police_employment("agency", "2015", "2022", state="NY", ctx=ctx)
@@ -98,6 +102,10 @@ class TestPoliceEmployment:
     async def test_invalid_to_year(self, ctx):
         r = await get_police_employment("national", "2015", "bad", ctx=ctx)
         assert "yyyy" in r
+
+    async def test_from_year_after_to_year(self, ctx):
+        r = await get_police_employment("national", "2022", "2015", ctx=ctx)
+        assert "after" in r
 
 
 # ── Hate Crime ───────────────────────────────────────────────────────────────
@@ -176,6 +184,10 @@ class TestHateCrime:
     async def test_invalid_to_date(self, ctx):
         r = await get_hate_crime_data("national", "01-2020", "2020", ctx=ctx)
         assert "mm-yyyy" in r
+
+    async def test_from_date_after_to_date(self, ctx):
+        r = await get_hate_crime_data("national", "06-2022", "01-2020", ctx=ctx)
+        assert "after" in r
 
 
 # ── Expanded Homicide ────────────────────────────────────────────────────────

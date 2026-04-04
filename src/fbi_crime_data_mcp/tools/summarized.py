@@ -58,5 +58,7 @@ async def get_summarized_crime_data(
         path = f"/summarized/national/{offense}"
 
     app_ctx: AppContext = ctx.lifespan_context
+    # SRS/summarized endpoint always returns both counts and rates together;
+    # it does not accept a "type" query parameter unlike NIBRS/arrests endpoints.
     raw = await app_ctx.api_get(path, {"from": from_date, "to": to_date})
     return process_crime_response(raw, aggregate=aggregate)

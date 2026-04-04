@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import re
@@ -70,7 +71,7 @@ class ResponseSpilloverMiddleware(Middleware):
         try:
             if not spillover_path.exists():
                 SPILLOVER_DIR.mkdir(parents=True, exist_ok=True)
-                spillover_path.write_text(full_text, encoding="utf-8")
+                await asyncio.to_thread(spillover_path.write_text, full_text, encoding="utf-8")
                 logger.info(
                     "Tool %r response spilled to %s (%d chars)",
                     tool_name,
