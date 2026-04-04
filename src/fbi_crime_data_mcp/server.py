@@ -35,6 +35,7 @@ from .tools import (  # noqa: E402, F401
     cache,
     employment,
     hate_crime,
+    homepage,
     homicide,
     leoka,
     lesdc,
@@ -72,6 +73,7 @@ mcp.add_middleware(
                 "get_crime_trends",
                 "get_reference_data",
                 "get_nibrs_estimation",
+                "get_cde_homepage_summary",
             ],
         ),
     )
