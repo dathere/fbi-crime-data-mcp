@@ -8,6 +8,7 @@ from ..constants import SPILLOVER_DIR
 from ..server import mcp
 
 _DEFAULT_LIMIT = 50_000
+_MAX_LIMIT = 100_000
 
 
 @mcp.tool()
@@ -25,16 +26,24 @@ async def read_spillover(
         filename: Name of the spillover file (e.g., "get_nibrs_data_a1b2c3d4.json").
                   Use "list" to see all available spillover files.
         offset: Character position to start reading from (default: 0).
-        limit: Maximum number of characters to return (default: 50000).
+        limit: Maximum number of characters to return (default: 50000, max: 100000).
     """
     if filename == "list":
         return _list_spillover_files()
 
-    # Validate filename to prevent path traversal
-    if "/" in filename or "\\" in filename or ".." in filename:
+    if offset < 0:
+        return "Invalid offset. Must be >= 0."
+    if limit <= 0:
+        return "Invalid limit. Must be > 0."
+    limit = min(limit, _MAX_LIMIT)
+
+    # Resolve and verify the path stays under SPILLOVER_DIR
+    filepath = (SPILLOVER_DIR / filename).resolve()
+    try:
+        filepath.relative_to(SPILLOVER_DIR.resolve())
+    except ValueError:
         return "Invalid filename. Use just the filename, not a path."
 
-    filepath = SPILLOVER_DIR / filename
     if not filepath.is_file():
         available = _list_spillover_files()
         return f"File not found: {filename}\n\n{available}"
