@@ -8,7 +8,7 @@ Created for data journalists, researchers, and anyone interested in exploring US
 
 ## Features
 
-- **16 tools** covering a wide range of crime data topics
+- **17 tools** covering a wide range of crime data topics
   - Crime trends and Summary Reporting System (SRS) crime data
   - National Incident Based Reporting System (NIBRS) incident-based data and national estimates
   - Arrest statistics with demographic breakdowns
@@ -50,7 +50,7 @@ Created for data journalists, researchers, and anyone interested in exploring US
 FBI_API_KEY=your-key uvx fbi-crime-data-mcp
 ```
 
-## Available Tools (16)
+## Available Tools (17)
 
 ### Core Crime Data
 | Tool | Description |
@@ -75,6 +75,11 @@ FBI_API_KEY=your-key uvx fbi-crime-data-mcp
 | [`get_leoka_data`](src/fbi_crime_data_mcp/tools/leoka.py) | Officers killed and assaulted — weapons, circumstances, demographics |
 | [`get_lesdc_data`](src/fbi_crime_data_mcp/tools/lesdc.py) | Law enforcement suicide data — demographics, race, duty status, and more |
 | [`get_use_of_force_data`](src/fbi_crime_data_mcp/tools/use_of_force.py) | Use of force incidents resulting in death, serious injury, or firearm discharge |
+
+### Overview
+| Tool | Description |
+|------|-------------|
+| [`get_cde_homepage_summary`](src/fbi_crime_data_mcp/tools/homepage.py) | CDE homepage summary — mission statement, navigation, data freshness, date ranges, and national crime trends |
 
 ### Reference & Lookup
 | Tool | Description |
