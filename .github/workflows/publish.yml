@@ -27,12 +27,9 @@ jobs:
       - name: Run tests
         run: uv run --python ${{ matrix.python-version }} pytest
 
-  publish:
+  build:
     needs: test
     runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -43,11 +40,31 @@ jobs:
       - name: Build package
         run: uv build
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 
   github-release:
-    needs: publish
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -55,11 +72,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-
-      - name: Build package
-        run: uv build
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
