@@ -6,16 +6,7 @@ from ..api_client import AppContext
 from ..constants import ARREST_OFFENSES
 from ..response_utils import process_crime_response
 from ..server import mcp
-from ..validators import (
-    validate_aggregate,
-    validate_data_type,
-    validate_level,
-    validate_mm_yyyy,
-    validate_offense,
-    validate_ori_required,
-    validate_state,
-    validate_state_required,
-)
+from ..validators import validate_crime_data_params
 
 ARREST_CATEGORIES = {"male", "female", "race", "sex"}
 
@@ -46,23 +37,24 @@ async def get_arrest_data(
         category: Optional demographic breakdown — "male", "female", "race", or "sex"
         aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity). Only applies when data_type is "counts".
     """
-    for err in (
-        validate_aggregate(data_type, aggregate),
-        validate_offense(offense, ARREST_OFFENSES, "arrest offense code",
-                        "Common codes: all (All), 11 (Murder), 30 (Robbery), 50 (Assault), 60 (Burglary), 70 (Larceny), 150 (Drug Abuse), 260 (DUI)."),
-        validate_level(level),
-        validate_data_type(data_type),
-        validate_state_required(level, state),
-        validate_ori_required(level, ori),
-        validate_state(state),
-        validate_mm_yyyy(from_date, "from_date"),
-        validate_mm_yyyy(to_date, "to_date"),
-    ):
-        if err:
-            return err
-
     if category and category not in ARREST_CATEGORIES:
         return f"Invalid category '{category}'. Must be one of: male, female, race, sex."
+
+    err = validate_crime_data_params(
+        level=level,
+        from_date=from_date,
+        to_date=to_date,
+        state=state,
+        ori=ori,
+        data_type=data_type,
+        aggregate=aggregate,
+        offense=offense,
+        offense_codes=ARREST_OFFENSES,
+        offense_label="arrest offense code",
+        offense_hint="Common codes: all (All), 11 (Murder), 30 (Robbery), 50 (Assault), 60 (Burglary), 70 (Larceny), 150 (Drug Abuse), 260 (DUI).",
+    )
+    if err:
+        return err
 
     if level == "state":
         path = f"/arrest/state/{state.upper()}/{offense}"

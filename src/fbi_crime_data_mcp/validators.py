@@ -66,6 +66,57 @@ def validate_yyyy(value: str, param_name: str) -> str | None:
     return None
 
 
+def validate_crime_data_params(
+    *,
+    level: str,
+    from_date: str,
+    to_date: str,
+    state: str | None = None,
+    ori: str | None = None,
+    data_type: str | None = None,
+    aggregate: str | None = None,
+    offense: str | None = None,
+    offense_codes: dict[str, str] | None = None,
+    offense_label: str = "offense code",
+    offense_hint: str = "",
+) -> str | None:
+    """Validate common crime data tool parameters.
+
+    Always validates geo level and date parameters, along with any required
+    geographic identifiers for the selected level. Validates ``data_type`` when
+    it is provided. Validates ``aggregate`` only when both ``data_type`` and
+    ``aggregate`` are provided. Validates ``offense`` only when both
+    ``offense`` and ``offense_codes`` are provided.
+
+    Returns an error string on the first validation failure, or None if all pass.
+    """
+    if data_type is not None and aggregate is not None:
+        err = validate_aggregate(data_type, aggregate)
+        if err:
+            return err
+    if offense is not None and offense_codes is not None:
+        err = validate_offense(offense, offense_codes, offense_label, offense_hint)
+        if err:
+            return err
+    err = validate_level(level)
+    if err:
+        return err
+    if data_type is not None:
+        err = validate_data_type(data_type)
+        if err:
+            return err
+    for err in (
+        validate_state_required(level, state),
+        validate_ori_required(level, ori),
+        validate_state(state),
+        validate_mm_yyyy(from_date, "from_date"),
+        validate_mm_yyyy(to_date, "to_date"),
+    ):
+        if err:
+            return err
+    return None
+
+
 def validate_offense(code: str, valid_codes: dict[str, str], label: str, hint: str = "") -> str | None:
     """Return error string if offense code is invalid, else None."""
     if code not in valid_codes:

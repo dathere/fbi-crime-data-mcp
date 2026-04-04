@@ -1,7 +1,7 @@
 """Tests for manage_cache tool."""
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -26,7 +26,7 @@ def fake_cache(tmp_path, monkeypatch):
     }
     (tmp_path / "S_tools_call-abc123-info.json").write_text(json.dumps(info))
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     # Active entry (expires in 30 days)
     active = {

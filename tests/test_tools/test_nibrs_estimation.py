@@ -14,9 +14,7 @@ class TestNibrsEstimation:
 
     async def test_national_path(self, ctx, app_ctx):
         await get_nibrs_estimation("09A", "national", 2022, ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/nibrs-estimation/national/09A", {"year": "2022"}
-        )
+        app_ctx.api_get.assert_called_once_with("/nibrs-estimation/national/09A", {"year": "2022"})
 
     # ── state ──
     async def test_state_requires_state(self, ctx):
@@ -29,9 +27,7 @@ class TestNibrsEstimation:
 
     async def test_state_path(self, ctx, app_ctx):
         await get_nibrs_estimation("09A", "state", 2022, state="CA", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/nibrs-estimation/state/CA/09A", {"year": "2022"}
-        )
+        app_ctx.api_get.assert_called_once_with("/nibrs-estimation/state/CA/09A", {"year": "2022"})
 
     # ── region ──
     async def test_region_requires_region(self, ctx):
@@ -44,9 +40,7 @@ class TestNibrsEstimation:
 
     async def test_region_path(self, ctx, app_ctx):
         await get_nibrs_estimation("09A", "region", 2022, region="S", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/nibrs-estimation/region/S/09A", {"year": "2022"}
-        )
+        app_ctx.api_get.assert_called_once_with("/nibrs-estimation/region/S/09A", {"year": "2022"})
 
     # ── agency-type ──
     async def test_agency_type_requires_agency_type(self, ctx):
@@ -59,9 +53,7 @@ class TestNibrsEstimation:
 
     async def test_agency_type_path(self, ctx, app_ctx):
         await get_nibrs_estimation("09A", "agency-type", 2022, agency_type="T", agency_type_location="C", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/nibrs-estimation/national/agency-type/T/C/09A", {"year": "2022"}
-        )
+        app_ctx.api_get.assert_called_once_with("/nibrs-estimation/national/agency-type/T/C/09A", {"year": "2022"})
 
     # ── size ──
     async def test_size_requires_agency_type(self, ctx):
@@ -78,6 +70,4 @@ class TestNibrsEstimation:
 
     async def test_size_path(self, ctx, app_ctx):
         await get_nibrs_estimation("09A", "size", 2022, agency_type="S", size_group="1", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/nibrs-estimation/national/size/S/1/09A", {"year": "2022"}
-        )
+        app_ctx.api_get.assert_called_once_with("/nibrs-estimation/national/size/S/1/09A", {"year": "2022"})

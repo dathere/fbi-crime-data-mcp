@@ -6,9 +6,10 @@ import json
 import os
 import time
 from collections import deque
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator
+from typing import Any
 
 import httpx
 from fastmcp import FastMCP
@@ -42,10 +43,7 @@ class RateLimiter:
                 window_desc = f"{self.window_seconds // 60} minutes"
             else:
                 window_desc = f"{self.window_seconds} seconds"
-            return (
-                f"Rate limit reached ({self.max_requests} requests per {window_desc}). "
-                f"Try again in ~{wait} seconds."
-            )
+            return f"Rate limit reached ({self.max_requests} requests per {window_desc}). Try again in ~{wait} seconds."
         return None
 
     def record(self) -> None:
@@ -75,10 +73,7 @@ class AppContext:
             return f"Error: Network error connecting to FBI API: {e}"
 
         if response.status_code == 429:
-            return (
-                "Error: FBI API rate limit exceeded (HTTP 429). "
-                "Wait a few minutes before retrying."
-            )
+            return "Error: FBI API rate limit exceeded (HTTP 429). Wait a few minutes before retrying."
         if response.status_code == 400:
             try:
                 body = response.json()
@@ -104,10 +99,7 @@ class AppContext:
 def _get_api_key() -> str:
     key = os.environ.get("FBI_API_KEY", "")
     if not key:
-        raise ValueError(
-            "FBI_API_KEY environment variable is required. "
-            "Get a free key at https://api.data.gov/signup/"
-        )
+        raise ValueError("FBI_API_KEY environment variable is required. Get a free key at https://api.data.gov/signup/")
     return key
 
 

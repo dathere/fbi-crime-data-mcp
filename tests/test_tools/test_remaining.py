@@ -1,15 +1,14 @@
 """Tests for remaining tools: trends, employment, hate_crime, homicide, property_data, leoka, lesdc, reference, use_of_force."""
 
-from fbi_crime_data_mcp.tools.trends import get_crime_trends
 from fbi_crime_data_mcp.tools.employment import get_police_employment
 from fbi_crime_data_mcp.tools.hate_crime import get_hate_crime_data
 from fbi_crime_data_mcp.tools.homicide import get_expanded_homicide_data
-from fbi_crime_data_mcp.tools.property_data import get_expanded_property_data
 from fbi_crime_data_mcp.tools.leoka import get_leoka_data
 from fbi_crime_data_mcp.tools.lesdc import get_lesdc_data
+from fbi_crime_data_mcp.tools.property_data import get_expanded_property_data
 from fbi_crime_data_mcp.tools.reference import get_reference_data
+from fbi_crime_data_mcp.tools.trends import get_crime_trends
 from fbi_crime_data_mcp.tools.use_of_force import get_use_of_force_data
-
 
 # ── Crime Trends ─────────────────────────────────────────────────────────────
 
@@ -29,9 +28,7 @@ class TestCrimeTrends:
 
     async def test_both_years(self, ctx, app_ctx):
         await get_crime_trends(from_year="2015", to_year="2022", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/trends/national", {"from": "2015", "to": "2022"}
-        )
+        app_ctx.api_get.assert_called_once_with("/trends/national", {"from": "2015", "to": "2022"})
 
     async def test_invalid_from_year(self, ctx):
         r = await get_crime_trends(from_year="01-2020", ctx=ctx)
@@ -55,8 +52,16 @@ class TestPoliceEmployment:
         assert "'state' is required" in r
 
     async def test_agency_requires_both(self, ctx):
-        r = await get_police_employment("agency", "2015", "2022", state="NY", ctx=ctx)
+        r = await get_police_employment("agency", "2015", "2022", ctx=ctx)
         assert "'state' and 'ori' are required" in r
+
+    async def test_agency_requires_ori(self, ctx):
+        r = await get_police_employment("agency", "2015", "2022", state="NY", ctx=ctx)
+        assert "'ori' is required" in r
+
+    async def test_agency_requires_state(self, ctx):
+        r = await get_police_employment("agency", "2015", "2022", ori="X1", ctx=ctx)
+        assert "'state' is required" in r
 
     async def test_region_requires_valid_region(self, ctx):
         r = await get_police_employment("region", "2015", "2022", ctx=ctx)
@@ -84,9 +89,7 @@ class TestPoliceEmployment:
 
     async def test_region_path(self, ctx, app_ctx):
         await get_police_employment("region", "2015", "2022", region="south", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/pe/region/south", {"from": "2015", "to": "2022"}
-        )
+        app_ctx.api_get.assert_called_once_with("/pe/region/south", {"from": "2015", "to": "2022"})
 
     async def test_invalid_from_year(self, ctx):
         r = await get_police_employment("national", "01-2020", "2022", ctx=ctx)
@@ -201,15 +204,11 @@ class TestHomicide:
 
     async def test_national_path(self, ctx, app_ctx):
         await get_expanded_homicide_data("national", "counts", "01-2020", "12-2020", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/shr/national", {"type": "counts", "from": "01-2020", "to": "12-2020"}
-        )
+        app_ctx.api_get.assert_called_once_with("/shr/national", {"type": "counts", "from": "01-2020", "to": "12-2020"})
 
     async def test_state_path(self, ctx, app_ctx):
         await get_expanded_homicide_data("state", "totals", "01-2020", "12-2020", state="TX", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/shr/state/TX", {"type": "totals", "from": "01-2020", "to": "12-2020"}
-        )
+        app_ctx.api_get.assert_called_once_with("/shr/state/TX", {"type": "totals", "from": "01-2020", "to": "12-2020"})
 
     async def test_agency_path(self, ctx, app_ctx):
         await get_expanded_homicide_data("agency", "counts", "01-2020", "12-2020", ori="X1", ctx=ctx)
@@ -222,12 +221,8 @@ class TestHomicide:
         assert "Invalid aggregate" in r
 
     async def test_totals_ignores_invalid_aggregate(self, ctx, app_ctx):
-        await get_expanded_homicide_data(
-            "national", "totals", "01-2020", "12-2020", aggregate="bad", ctx=ctx
-        )
-        app_ctx.api_get.assert_called_once_with(
-            "/shr/national", {"type": "totals", "from": "01-2020", "to": "12-2020"}
-        )
+        await get_expanded_homicide_data("national", "totals", "01-2020", "12-2020", aggregate="bad", ctx=ctx)
+        app_ctx.api_get.assert_called_once_with("/shr/national", {"type": "totals", "from": "01-2020", "to": "12-2020"})
 
     async def test_invalid_from_date(self, ctx):
         r = await get_expanded_homicide_data("national", "counts", "2020", "12-2020", ctx=ctx)
@@ -277,9 +272,7 @@ class TestPropertyData:
         assert "Invalid aggregate" in r
 
     async def test_totals_ignores_invalid_aggregate(self, ctx, app_ctx):
-        await get_expanded_property_data(
-            "NB", "national", "totals", "01-2020", "12-2020", aggregate="bad", ctx=ctx
-        )
+        await get_expanded_property_data("NB", "national", "totals", "01-2020", "12-2020", aggregate="bad", ctx=ctx)
         app_ctx.api_get.assert_called_once_with(
             "/supplemental/national/NB", {"type": "totals", "from": "01-2020", "to": "12-2020"}
         )
@@ -312,28 +305,26 @@ class TestLeoka:
         assert "'month'" in r
 
     async def test_month_too_low(self, ctx):
-        r = await get_leoka_data("monthly", 2022, month=-1, ctx=ctx)
-        assert "between 0" in r
+        r = await get_leoka_data("monthly", 2022, month=0, ctx=ctx)
+        assert "between 1" in r
 
     async def test_month_too_high(self, ctx):
-        r = await get_leoka_data("monthly", 2022, month=12, ctx=ctx)
-        assert "between 0" in r
+        r = await get_leoka_data("monthly", 2022, month=13, ctx=ctx)
+        assert "between 1" in r
 
     async def test_monthly_path(self, ctx, app_ctx):
-        await get_leoka_data("monthly", 2022, month=0, ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/leoka/monthly", {"year": "2022", "month": "0"}
-        )
+        """Month 1 (January) maps to API month 0."""
+        await get_leoka_data("monthly", 2022, month=1, ctx=ctx)
+        app_ctx.api_get.assert_called_once_with("/leoka/monthly", {"year": "2022", "month": "0"})
 
     async def test_ytd_path(self, ctx, app_ctx):
         await get_leoka_data("ytd", 2022, ctx=ctx)
         app_ctx.api_get.assert_called_once_with("/leoka/ytd", {"year": "2022"})
 
-    async def test_month_boundary_11(self, ctx, app_ctx):
-        await get_leoka_data("monthly", 2022, month=11, ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/leoka/monthly", {"year": "2022", "month": "11"}
-        )
+    async def test_month_boundary_12(self, ctx, app_ctx):
+        """Month 12 (December) maps to API month 11."""
+        await get_leoka_data("monthly", 2022, month=12, ctx=ctx)
+        app_ctx.api_get.assert_called_once_with("/leoka/monthly", {"year": "2022", "month": "11"})
 
     async def test_ytd_ignores_month(self, ctx, app_ctx):
         """Month param should be ignored (not validated) when report_type is ytd."""
@@ -351,9 +342,7 @@ class TestLesdc:
 
     async def test_valid_chart_type(self, ctx, app_ctx):
         await get_lesdc_data(2022, "demographics", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/lesdc", {"year": "2022", "chartType": "demographics"}
-        )
+        app_ctx.api_get.assert_called_once_with("/lesdc", {"year": "2022", "chartType": "demographics"})
 
 
 # ── Reference Data ───────────────────────────────────────────────────────────
@@ -408,15 +397,11 @@ class TestUseOfForce:
 
     async def test_summary_national(self, ctx, app_ctx):
         await get_use_of_force_data("summary", year=2022, location="national", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/uof", {"year": "2022", "location": "national"}
-        )
+        app_ctx.api_get.assert_called_once_with("/uof", {"year": "2022", "location": "national"})
 
     async def test_summary_state(self, ctx, app_ctx):
         await get_use_of_force_data("summary", year=2022, location="ca", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/uof", {"year": "2022", "location": "CA"}
-        )
+        app_ctx.api_get.assert_called_once_with("/uof", {"year": "2022", "location": "CA"})
 
     # ── questions ──
     async def test_questions_requires_params(self, ctx):

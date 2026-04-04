@@ -6,14 +6,7 @@ from ..api_client import AppContext
 from ..constants import SRS_OFFENSES
 from ..response_utils import process_crime_response
 from ..server import mcp
-from ..validators import (
-    validate_level,
-    validate_mm_yyyy,
-    validate_offense,
-    validate_ori_required,
-    validate_state,
-    validate_state_required,
-)
+from ..validators import validate_crime_data_params
 
 _offense_list = ", ".join(f"{k} ({v})" for k, v in SRS_OFFENSES.items())
 
@@ -32,29 +25,30 @@ async def get_summarized_crime_data(
     """Get summarized (SRS) crime data including offense rates, actuals, clearances, and population coverage.
 
     Args:
-        offense: SRS offense code. Valid values: {offenses}
+        offense: SRS offense code (e.g., "V" for Violent Crime, "P" for Property Crime, "HOM", "RPE", "ROB", "ASS", "BUR", "LAR", "MVT", "ARS"). Use get_reference_data for full list.
         level: Geographic level — "national", "state", or "agency"
         from_date: Start date in mm-yyyy format (e.g., "01-2020")
         to_date: End date in mm-yyyy format (e.g., "12-2022")
         state: Two-letter state abbreviation (required when level is "state")
         ori: Agency ORI code (required when level is "agency")
         aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity)
-    """.format(offenses=_offense_list)
-    if aggregate not in ("yearly", "monthly"):
-        return "Invalid aggregate. Must be 'yearly' or 'monthly'."
+    """
 
-    for err in (
-        validate_offense(offense, SRS_OFFENSES, "offense code",
-                        f"Valid codes: {_offense_list}"),
-        validate_level(level),
-        validate_state_required(level, state),
-        validate_ori_required(level, ori),
-        validate_state(state),
-        validate_mm_yyyy(from_date, "from_date"),
-        validate_mm_yyyy(to_date, "to_date"),
-    ):
-        if err:
-            return err
+    err = validate_crime_data_params(
+        level=level,
+        from_date=from_date,
+        to_date=to_date,
+        state=state,
+        ori=ori,
+        data_type="counts",
+        aggregate=aggregate,
+        offense=offense,
+        offense_codes=SRS_OFFENSES,
+        offense_label="offense code",
+        offense_hint=f"Valid codes: {_offense_list}",
+    )
+    if err:
+        return err
 
     if level == "state":
         path = f"/summarized/state/{state.upper()}/{offense}"
