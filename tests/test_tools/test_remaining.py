@@ -57,7 +57,7 @@ class TestPoliceEmployment:
 
     async def test_agency_requires_state(self, ctx):
         r = await get_police_employment("agency", "2015", "2022", ori="X1", ctx=ctx)
-        assert "'state' and 'ori' are required" in r
+        assert "'state' is required when level is 'agency'" in r
 
     async def test_region_requires_valid_region(self, ctx):
         r = await get_police_employment("region", "2015", "2022", ctx=ctx)

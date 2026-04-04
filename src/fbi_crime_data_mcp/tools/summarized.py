@@ -22,10 +22,10 @@ async def get_summarized_crime_data(
     aggregate: str = "yearly",
     ctx: Context | None = None,
 ) -> str:
-    f"""Get summarized (SRS) crime data including offense rates, actuals, clearances, and population coverage.
+    """Get summarized (SRS) crime data including offense rates, actuals, clearances, and population coverage.
 
     Args:
-        offense: SRS offense code. Valid values: {_offense_list}
+        offense: SRS offense code (e.g., "aggravated-assault", "burglary", "larceny", "motor-vehicle-theft", "homicide", "rape", "robbery", "arson", "property-crime", "violent-crime"). Use get_reference_data for full list.
         level: Geographic level — "national", "state", or "agency"
         from_date: Start date in mm-yyyy format (e.g., "01-2020")
         to_date: End date in mm-yyyy format (e.g., "12-2022")
@@ -33,8 +33,6 @@ async def get_summarized_crime_data(
         ori: Agency ORI code (required when level is "agency")
         aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity)
     """
-    if aggregate not in ("yearly", "monthly"):
-        return "Invalid aggregate. Must be 'yearly' or 'monthly'."
 
     err = validate_crime_data_params(
         level=level,
@@ -42,6 +40,8 @@ async def get_summarized_crime_data(
         to_date=to_date,
         state=state,
         ori=ori,
+        data_type="counts",
+        aggregate=aggregate,
         offense=offense,
         offense_codes=SRS_OFFENSES,
         offense_label="offense code",

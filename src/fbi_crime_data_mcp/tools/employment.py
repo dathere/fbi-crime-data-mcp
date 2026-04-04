@@ -43,7 +43,7 @@ async def get_police_employment(
         if err:
             return err
     if level == "agency" and not state:
-        return "Both 'state' and 'ori' are required when level is 'agency'."
+        return "Parameter 'state' is required when level is 'agency'."
     if level == "region" and (not region or region.lower() not in VALID_REGIONS):
         return f"Parameter 'region' is required. Valid values: {', '.join(VALID_REGIONS)}"
     for err in (

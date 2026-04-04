@@ -15,11 +15,11 @@ async def get_lesdc_data(
     chart_type: str,
     ctx: Context | None = None,
 ) -> str:
-    f"""Get law enforcement suicide data with breakdowns by demographics, race, location, duty status, and more.
+    """Get law enforcement suicide data with breakdowns by demographics, race, location, duty status, and more.
 
     Args:
         year: Year for the data (e.g., 2022)
-        chart_type: Chart/breakdown type — {_chart_list}
+        chart_type: Chart/breakdown type. Use get_reference_data or see error message for valid values.
     """
     if chart_type not in LESDC_CHART_TYPES:
         return f"Invalid chart_type '{chart_type}'. Valid values: {_chart_list}"

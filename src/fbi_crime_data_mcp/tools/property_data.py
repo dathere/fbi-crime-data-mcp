@@ -23,10 +23,10 @@ async def get_expanded_property_data(
     aggregate: str = "yearly",
     ctx: Context | None = None,
 ) -> str:
-    f"""Get expanded property crime data with details on stolen/recovered property values.
+    """Get expanded property crime data with details on stolen/recovered property values.
 
     Args:
-        offense: Property offense code — {_offense_list}
+        offense: Property offense code (e.g., "burglary", "larceny", "motor-vehicle-theft", "arson"). Use get_reference_data for full list.
         level: Geographic level — "national", "state", or "agency"
         data_type: "counts" for time series or "totals" for property value breakdowns
         from_date: Start date in mm-yyyy format (e.g., "01-2020")
