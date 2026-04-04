@@ -183,12 +183,17 @@ def build_geo_path(
     appended after the level segment.
     """
     if level == "state":
-        assert state is not None, "state is required when level is 'state'"
+        if state is None:
+            raise ValueError("state is required when level is 'state'")
         path = f"{base}/state/{state.upper()}"
     elif level == "agency":
+        if ori is None:
+            raise ValueError("ori is required when level is 'agency'")
         path = f"{base}/agency/{ori}"
-    else:
+    elif level == "national":
         path = f"{base}/national"
+    else:
+        raise ValueError(f"level must be one of 'national', 'state', or 'agency', got {level!r}")
     if suffix:
         path += f"/{suffix}"
     return path
