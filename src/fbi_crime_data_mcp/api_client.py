@@ -150,13 +150,13 @@ def _load_persisted_stats() -> dict[str, dict[str, int]]:
         if isinstance(data, dict):
             normalized: dict[str, dict[str, int]] = {}
             for name, counts in data.items():
-                if not isinstance(name, str) or not isinstance(counts, dict):
+                if not isinstance(counts, dict):
                     continue
                 hits = counts.get("hits", 0)
                 misses = counts.get("misses", 0)
                 normalized[name] = {
-                    "hits": hits if isinstance(hits, int) else 0,
-                    "misses": misses if isinstance(misses, int) else 0,
+                    "hits": hits if isinstance(hits, int) and hits >= 0 else 0,
+                    "misses": misses if isinstance(misses, int) and misses >= 0 else 0,
                 }
             return normalized
     except (json.JSONDecodeError, OSError):
