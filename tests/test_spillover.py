@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from unittest.mock import AsyncMock
-
-import pytest
-from mcp.types import TextContent
 
 from fastmcp.server.middleware.middleware import MiddlewareContext
 from fastmcp.tools.base import ToolResult
+from mcp.types import TextContent
 
 from fbi_crime_data_mcp.spillover import ResponseSpilloverMiddleware
 
@@ -90,9 +87,7 @@ class TestSpilloverMiddleware:
 
         monkeypatch.setattr(mod, "SPILLOVER_DIR", tmp_path / "spillover")
 
-        mw = ResponseSpilloverMiddleware(
-            max_chars=100, excluded_tools={"manage_cache"}
-        )
+        mw = ResponseSpilloverMiddleware(max_chars=100, excluded_tools={"manage_cache"})
         big = _make_result("z" * 200)
         call_next = AsyncMock(return_value=big)
 

@@ -2,6 +2,7 @@
 
 from fbi_crime_data_mcp.validators import (
     validate_aggregate,
+    validate_crime_data_params,
     validate_data_type,
     validate_level,
     validate_mm_yyyy,
@@ -143,3 +144,138 @@ class TestValidateOffense:
     def test_valid_ignores_hint(self):
         codes = {"A": "Alpha", "B": "Beta"}
         assert validate_offense("A", codes, "test code", "some hint") is None
+
+
+class TestValidateCrimeDataParams:
+    """Tests for the consolidated validate_crime_data_params helper."""
+
+    def test_all_valid_minimal(self):
+        assert (
+            validate_crime_data_params(
+                level="national",
+                from_date="01-2020",
+                to_date="12-2020",
+            )
+            is None
+        )
+
+    def test_all_valid_full(self):
+        codes = {"09A": "Murder"}
+        assert (
+            validate_crime_data_params(
+                level="national",
+                from_date="01-2020",
+                to_date="12-2020",
+                data_type="counts",
+                aggregate="yearly",
+                offense="09A",
+                offense_codes=codes,
+                offense_label="test",
+            )
+            is None
+        )
+
+    def test_invalid_aggregate(self):
+        err = validate_crime_data_params(
+            level="national",
+            from_date="01-2020",
+            to_date="12-2020",
+            data_type="counts",
+            aggregate="bad",
+        )
+        assert "Invalid aggregate" in err
+
+    def test_invalid_offense(self):
+        codes = {"09A": "Murder"}
+        err = validate_crime_data_params(
+            level="national",
+            from_date="01-2020",
+            to_date="12-2020",
+            offense="ZZZ",
+            offense_codes=codes,
+            offense_label="test code",
+        )
+        assert "Invalid test code" in err
+
+    def test_invalid_level(self):
+        err = validate_crime_data_params(
+            level="city",
+            from_date="01-2020",
+            to_date="12-2020",
+        )
+        assert "Invalid level" in err
+
+    def test_invalid_data_type(self):
+        err = validate_crime_data_params(
+            level="national",
+            from_date="01-2020",
+            to_date="12-2020",
+            data_type="bad",
+        )
+        assert "Invalid data_type" in err
+
+    def test_state_requires_state(self):
+        err = validate_crime_data_params(
+            level="state",
+            from_date="01-2020",
+            to_date="12-2020",
+        )
+        assert "'state' is required" in err
+
+    def test_agency_requires_ori(self):
+        err = validate_crime_data_params(
+            level="agency",
+            from_date="01-2020",
+            to_date="12-2020",
+            state="CA",
+        )
+        assert "'ori' is required" in err
+
+    def test_invalid_state(self):
+        err = validate_crime_data_params(
+            level="state",
+            from_date="01-2020",
+            to_date="12-2020",
+            state="ZZ",
+        )
+        assert "Invalid state" in err
+
+    def test_invalid_from_date(self):
+        err = validate_crime_data_params(
+            level="national",
+            from_date="2020",
+            to_date="12-2020",
+        )
+        assert "mm-yyyy" in err
+
+    def test_invalid_to_date(self):
+        err = validate_crime_data_params(
+            level="national",
+            from_date="01-2020",
+            to_date="bad",
+        )
+        assert "mm-yyyy" in err
+
+    def test_aggregate_ignored_without_data_type(self):
+        """aggregate validation is skipped when data_type is not provided."""
+        assert (
+            validate_crime_data_params(
+                level="national",
+                from_date="01-2020",
+                to_date="12-2020",
+                aggregate="bad",
+            )
+            is None
+        )
+
+    def test_offense_ignored_without_codes(self):
+        """offense validation is skipped when offense_codes is not provided."""
+        assert (
+            validate_crime_data_params(
+                level="national",
+                from_date="01-2020",
+                to_date="12-2020",
+                offense="ZZZ",
+            )
+            is None
+        )

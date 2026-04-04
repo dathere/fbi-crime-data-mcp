@@ -6,15 +6,7 @@ from ..api_client import AppContext
 from ..constants import BIAS_CODES
 from ..response_utils import process_crime_response
 from ..server import mcp
-from ..validators import (
-    validate_aggregate,
-    validate_data_type,
-    validate_level,
-    validate_mm_yyyy,
-    validate_ori_required,
-    validate_state,
-    validate_state_required,
-)
+from ..validators import validate_crime_data_params
 
 
 @mcp.tool()
@@ -41,21 +33,20 @@ async def get_hate_crime_data(
         ori: Agency ORI code (required when level is "agency")
         aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity). Only applies when data_type is "counts".
     """
-    for err in (
-        validate_aggregate(data_type, aggregate),
-        validate_level(level),
-        validate_data_type(data_type),
-        validate_state_required(level, state),
-        validate_ori_required(level, ori),
-        validate_state(state),
-        validate_mm_yyyy(from_date, "from_date"),
-        validate_mm_yyyy(to_date, "to_date"),
-    ):
-        if err:
-            return err
-
     if bias and bias not in BIAS_CODES:
         return f"Invalid bias code '{bias}'. Use get_reference_data(data_type='offenses', offense_type='hate-crime') to see valid codes."
+
+    err = validate_crime_data_params(
+        level=level,
+        from_date=from_date,
+        to_date=to_date,
+        state=state,
+        ori=ori,
+        data_type=data_type,
+        aggregate=aggregate,
+    )
+    if err:
+        return err
 
     if level == "state":
         path = f"/hate-crime/state/{state.upper()}"

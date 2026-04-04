@@ -203,11 +203,7 @@ class TestProcessCrimeResponse:
     def test_non_monthly_dict_preserved(self):
         data = {
             "cde_properties": {"max_data_date": {"UCR": "03/2026"}},
-            "offenses": {
-                "actuals": {
-                    "Series": {"01-2023": 5, "02-2023": 3}
-                }
-            },
+            "offenses": {"actuals": {"Series": {"01-2023": 5, "02-2023": 3}}},
         }
         raw = json.dumps(data)
         result = json.loads(process_crime_response(raw, aggregate="yearly"))
@@ -220,13 +216,7 @@ class TestProcessCrimeResponse:
         assert result == {"ok": True}
 
     def test_actuals_integers_stay_integers(self):
-        data = {
-            "offenses": {
-                "actuals": {
-                    "Series": {"01-2023": 5, "02-2023": 3}
-                }
-            }
-        }
+        data = {"offenses": {"actuals": {"Series": {"01-2023": 5, "02-2023": 3}}}}
         raw = json.dumps(data)
         result = json.loads(process_crime_response(raw, aggregate="yearly"))
         val = result["offenses"]["actuals"]["Series"]["2023"]

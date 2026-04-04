@@ -26,21 +26,15 @@ class TestSummarizedCrimeData:
 
     async def test_national_path(self, ctx, app_ctx):
         await get_summarized_crime_data("HOM", "national", "01-2020", "12-2022", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/summarized/national/HOM", {"from": "01-2020", "to": "12-2022"}
-        )
+        app_ctx.api_get.assert_called_once_with("/summarized/national/HOM", {"from": "01-2020", "to": "12-2022"})
 
     async def test_state_path(self, ctx, app_ctx):
         await get_summarized_crime_data("ROB", "state", "01-2020", "12-2020", state="CA", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/summarized/state/CA/ROB", {"from": "01-2020", "to": "12-2020"}
-        )
+        app_ctx.api_get.assert_called_once_with("/summarized/state/CA/ROB", {"from": "01-2020", "to": "12-2020"})
 
     async def test_agency_path(self, ctx, app_ctx):
         await get_summarized_crime_data("V", "agency", "01-2021", "12-2025", ori="NY0303000", ctx=ctx)
-        app_ctx.api_get.assert_called_once_with(
-            "/summarized/agency/NY0303000/V", {"from": "01-2021", "to": "12-2025"}
-        )
+        app_ctx.api_get.assert_called_once_with("/summarized/agency/NY0303000/V", {"from": "01-2021", "to": "12-2025"})
 
     async def test_all_srs_offenses_accepted(self, ctx, app_ctx):
         for code in ("V", "P", "HOM", "RPE", "ROB", "ASS", "BUR", "LAR", "MVT", "ARS"):

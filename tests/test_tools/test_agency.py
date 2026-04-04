@@ -118,9 +118,7 @@ class TestLookupAgency:
         agencies = [{"agency_name": f"Police {i}"} for i in range(10)]
         agencies.append({"agency_name": "Fire Department"})
         app_ctx.api_get.return_value = json.dumps(agencies)
-        r = await lookup_agency(
-            "by_state", state="NJ", name_filter="Police", offset=2, limit=3, ctx=ctx
-        )
+        r = await lookup_agency("by_state", state="NJ", name_filter="Police", offset=2, limit=3, ctx=ctx)
         result = json.loads(r)
         assert result["total"] == 10  # 10 police, filtered from 11
         assert len(result["data"]) == 3

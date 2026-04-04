@@ -18,18 +18,19 @@ async def get_leoka_data(
     Args:
         report_type: "monthly" for a specific month or "ytd" for year-to-date summary
         year: Year for the data (e.g., 2022)
-        month: Month number 0-11 (January=0). Required when report_type is "monthly".
+        month: Month number 1-12 (January=1, December=12). Required when report_type is "monthly".
     """
     if report_type not in ("monthly", "ytd"):
         return "Invalid report_type. Must be 'monthly' or 'ytd'."
     if report_type == "monthly" and month is None:
-        return "Parameter 'month' (0-11) is required when report_type is 'monthly'."
-    if report_type == "monthly" and month is not None and not (0 <= month <= 11):
-        return "Parameter 'month' must be between 0 (January) and 11 (December)."
+        return "Parameter 'month' (1-12) is required when report_type is 'monthly'."
+    if report_type == "monthly" and month is not None and not (1 <= month <= 12):
+        return "Parameter 'month' must be between 1 (January) and 12 (December)."
 
     params: dict[str, str] = {"year": str(year)}
     if report_type == "monthly":
-        params["month"] = str(month)
+        # FBI API uses 0-indexed months (0=January, 11=December)
+        params["month"] = str(month - 1)
         path = "/leoka/monthly"
     else:
         path = "/leoka/ytd"

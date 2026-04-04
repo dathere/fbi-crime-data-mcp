@@ -4,7 +4,13 @@ from fastmcp import Context
 
 from ..api_client import AppContext
 from ..server import mcp
-from ..validators import validate_state, validate_yyyy
+from ..validators import (
+    validate_level,
+    validate_ori_required,
+    validate_state,
+    validate_state_required,
+    validate_yyyy,
+)
 
 VALID_REGIONS = {"midwest", "south", "northeast", "west"}
 
@@ -29,19 +35,19 @@ async def get_police_employment(
         ori: Agency ORI code (required for "agency" level)
         region: Region name — "midwest", "south", "northeast", or "west" (required for "region" level)
     """
-    if level not in ("national", "state", "agency", "region"):
-        return "Invalid level. Must be 'national', 'state', 'agency', or 'region'."
-    if level == "state" and not state:
-        return "Parameter 'state' is required when level is 'state'."
-    if level == "agency" and (not state or not ori):
+    for err in (
+        validate_level(level, ("national", "state", "agency", "region")),
+        validate_state_required(level, state),
+        validate_ori_required(level, ori),
+    ):
+        if err:
+            return err
+    if level == "agency" and not state:
         return "Both 'state' and 'ori' are required when level is 'agency'."
     if level == "region" and (not region or region.lower() not in VALID_REGIONS):
         return f"Parameter 'region' is required. Valid values: {', '.join(VALID_REGIONS)}"
-
-    err = validate_state(state)
-    if err:
-        return err
     for err in (
+        validate_state(state),
         validate_yyyy(from_year, "from_year"),
         validate_yyyy(to_year, "to_year"),
     ):

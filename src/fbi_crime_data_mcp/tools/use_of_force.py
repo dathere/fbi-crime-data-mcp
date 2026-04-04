@@ -3,8 +3,8 @@
 from fastmcp import Context
 
 from ..api_client import AppContext
-from ..constants import US_STATES
 from ..server import mcp
+from ..validators import validate_state
 
 
 @mcp.tool()
@@ -35,8 +35,10 @@ async def get_use_of_force_data(
     if report_type == "summary":
         if year is None or not location:
             return "Both 'year' and 'location' are required for summary type."
-        if location != "national" and location.upper() not in US_STATES:
-            return f"Invalid location '{location}'. Must be 'national' or a state abbreviation."
+        if location != "national":
+            err = validate_state(location)
+            if err:
+                return f"Invalid location '{location}'. Must be 'national' or a state abbreviation."
         loc = location if location == "national" else location.upper()
         return await app_ctx.api_get("/uof", {"year": str(year), "location": loc})
 

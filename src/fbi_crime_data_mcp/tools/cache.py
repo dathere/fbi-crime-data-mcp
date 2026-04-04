@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import json
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastmcp.server.middleware.caching import ResponseCachingMiddleware
 
-from ..constants import CACHE_DIR as _CACHE_DIR, SPILLOVER_DIR as _SPILLOVER_DIR
+from ..constants import CACHE_DIR as _CACHE_DIR
+from ..constants import SPILLOVER_DIR as _SPILLOVER_DIR
 from ..server import mcp
 
 
@@ -17,7 +18,7 @@ def _parse_aware_dt(iso_str: str) -> datetime:
     """Parse an ISO datetime string, assuming UTC if naive."""
     dt = datetime.fromisoformat(iso_str)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -64,7 +65,7 @@ async def manage_cache(action: str) -> str:
 
 def _cache_status() -> str:
     """Gather cache statistics."""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     total_entries = 0
     expired_entries = 0
     active_entries = 0
@@ -152,6 +153,7 @@ def _spillover_stats() -> dict:
     if not _SPILLOVER_DIR.is_dir():
         return {"files": 0, "size_kb": 0}
     files = list(_SPILLOVER_DIR.glob("*.json"))
+
     def _safe_size(f: Path) -> int:
         try:
             return f.stat().st_size
@@ -211,16 +213,14 @@ def _session_hit_rate() -> dict:
         "hits": total_hits,
         "misses": total_misses,
         "total": total_requests,
-        "hit_rate_pct": round(total_hits / total_requests * 100, 1)
-        if total_requests
-        else None,
+        "hit_rate_pct": round(total_hits / total_requests * 100, 1) if total_requests else None,
         "collections": per_collection,
     }
 
 
 def _clear_cache(expired_only: bool) -> str:
     """Clear cache entries. If expired_only, remove only expired entries."""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     removed = 0
     kept = 0
     freed_bytes = 0

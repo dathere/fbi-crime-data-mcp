@@ -25,12 +25,9 @@ def process_crime_response(raw_json: str, aggregate: str = "yearly") -> str:
         aggregate: "yearly" to aggregate monthly data into yearly totals,
                    "monthly" to keep raw monthly data (still trims).
     """
-    if not raw_json.startswith("{"):
-        return raw_json
-
     try:
         data = json.loads(raw_json)
-    except (json.JSONDecodeError, TypeError):
+    except (json.JSONDecodeError, TypeError, ValueError):
         return raw_json
 
     if not isinstance(data, dict):
@@ -62,12 +59,7 @@ def filter_agencies_by_name(raw_json: str, name_filter: str) -> str:
     needle = name_filter.lower()
 
     if isinstance(data, list):
-        filtered = [
-            a
-            for a in data
-            if isinstance(a, dict)
-            and needle in a.get("agency_name", "").lower()
-        ]
+        filtered = [a for a in data if isinstance(a, dict) and needle in a.get("agency_name", "").lower()]
         return json.dumps(filtered, indent=2)
 
     if isinstance(data, dict):
@@ -79,12 +71,7 @@ def filter_agencies_by_name(raw_json: str, name_filter: str) -> str:
         for group, agencies in data.items():
             if not isinstance(agencies, list):
                 continue
-            matches = [
-                a
-                for a in agencies
-                if isinstance(a, dict)
-                and needle in a.get("agency_name", "").lower()
-            ]
+            matches = [a for a in agencies if isinstance(a, dict) and needle in a.get("agency_name", "").lower()]
             if matches:
                 filtered[group] = matches
         return json.dumps(filtered, indent=2)
@@ -212,9 +199,7 @@ def _collapse_monthly(monthly: dict, strategy: str) -> dict:
     return result
 
 
-def _apply_strategy(
-    values: list[float | int | None], strategy: str
-) -> float | int | None:
+def _apply_strategy(values: list[float | int | None], strategy: str) -> float | int | None:
     """Reduce a list of monthly values to a single yearly value."""
     non_null = [v for v in values if v is not None]
     if not non_null:

@@ -7,10 +7,9 @@ import logging
 import re
 
 import mcp.types as mt
-from mcp.types import TextContent
-
 from fastmcp.server.middleware.middleware import CallNext, Middleware, MiddlewareContext
 from fastmcp.tools.base import ToolResult
+from mcp.types import TextContent
 
 from .constants import SPILLOVER_CHAR_LIMIT, SPILLOVER_DIR, SPILLOVER_PREVIEW_CHARS
 

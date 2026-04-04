@@ -54,9 +54,7 @@ _cache_dir.mkdir(parents=True, exist_ok=True)
 _cache_store = FileTreeStore(
     data_directory=_cache_dir,
     key_sanitization_strategy=FileTreeV1KeySanitizationStrategy(_cache_dir),
-    collection_sanitization_strategy=FileTreeV1CollectionSanitizationStrategy(
-        _cache_dir
-    ),
+    collection_sanitization_strategy=FileTreeV1CollectionSanitizationStrategy(_cache_dir),
 )
 
 _TTL_90_DAYS = 90 * 24 * 3600
