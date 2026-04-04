@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 
 from fastmcp import Context
@@ -63,8 +64,10 @@ async def get_cde_homepage_summary(ctx: Context | None = None) -> str:
     """
     app_ctx: AppContext = ctx.lifespan_context
 
-    refresh_raw = await app_ctx.api_get("/refresh-date")
-    properties_raw = await app_ctx.api_get("/lookup/cde_properties")
+    refresh_raw, properties_raw = await asyncio.gather(
+        app_ctx.api_get("/refresh-date"),
+        app_ctx.api_get("/lookup/cde_properties"),
+    )
 
     try:
         refresh_data = json.loads(refresh_raw)

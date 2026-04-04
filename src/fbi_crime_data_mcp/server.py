@@ -73,7 +73,6 @@ mcp.add_middleware(
                 "get_crime_trends",
                 "get_reference_data",
                 "get_nibrs_estimation",
-                "get_cde_homepage_summary",
             ],
         ),
     )
@@ -96,6 +95,7 @@ mcp.add_middleware(
                 "get_leoka_data",
                 "get_lesdc_data",
                 "get_use_of_force_data",
+                "get_cde_homepage_summary",
             ],
         ),
     )
