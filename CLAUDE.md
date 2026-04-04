@@ -17,10 +17,11 @@ FBI_API_KEY=xxx uv run pytest -m integration        # integration tests (hits re
 
 ## Architecture
 
-- `src/fbi_crime_data_mcp/server.py` — FastMCP server entry point with lifespan context. Imports all tool modules. Configures two `ResponseCachingMiddleware` instances with `FileTreeStore` for tiered disk-backed caching (90-day TTL for summaries/trends/reference; 30-day TTL for agency/incident data). Cache persists to `~/.cache/fbi-crime-data-mcp/`.
+- `src/fbi_crime_data_mcp/server.py` — FastMCP server entry point with lifespan context. Imports all tool modules. Configures two `ResponseCachingMiddleware` instances with `FileTreeStore` for tiered disk-backed caching (90-day TTL for summaries/trends/reference; 30-day TTL for agency/incident data), plus a `ResponseSpilloverMiddleware` for oversized responses. Cache persists to `~/.cache/fbi-crime-data-mcp/`.
 - `src/fbi_crime_data_mcp/api_client.py` — Shared `httpx.AsyncClient` wrapper with sliding-window rate limiter (1000 req/hr). `AppContext` dataclass is the lifespan context available to all tools via `ctx.lifespan_context`.
 - `src/fbi_crime_data_mcp/response_utils.py` — Post-processing for API responses: `process_crime_response()` trims verbose sections (tooltips, participated_population) and aggregates monthly `mm-yyyy` data into yearly totals; `filter_agencies_by_name()` does case-insensitive substring filtering on agency lists.
 - `src/fbi_crime_data_mcp/constants.py` — All validation enums: SRS offenses, NIBRS codes, arrest offenses, bias codes, LESDC chart types, states.
+- `src/fbi_crime_data_mcp/spillover.py` — `ResponseSpilloverMiddleware` saves oversized tool responses (>128K chars) to disk under `~/.cache/fbi-crime-data-mcp/spillover/`, returning a preview with the file path. Content-addressed filenames avoid duplicates.
 - `src/fbi_crime_data_mcp/validators.py` — Shared validation helpers used by tools: level, data_type, aggregate, state, ORI, date format (mm-yyyy / yyyy), and offense code validators.
 - `src/fbi_crime_data_mcp/tools/` — One module per tool, each registers via `@mcp.tool()` decorator on the shared `mcp` instance imported from `server.py`.
 

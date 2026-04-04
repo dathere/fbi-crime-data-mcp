@@ -61,6 +61,10 @@ FBI_API_KEY=your-key uvx fbi-crime-data-mcp
 | [`get_reference_data`](src/fbi_crime_data_mcp/tools/reference.py) | State lists, offense/bias code lookups, data refresh dates |
 | [`manage_cache`](src/fbi_crime_data_mcp/tools/cache.py) | View cache stats, clear all entries, or clear only expired entries |
 
+## Large Responses
+
+When a tool response exceeds 128,000 characters, the full result is saved to `~/.cache/fbi-crime-data-mcp/spillover/` and a truncated preview is returned with the file path. To avoid this, narrow your query (shorter date range, specific state/agency).
+
 ## Data Sources
 
 All data comes from the FBI's [Crime Data Explorer](https://cde.ucr.cjis.gov/) API, which provides Uniform Crime Reporting (UCR) data including both the Summary Reporting System (SRS) and the National Incident-Based Reporting System (NIBRS).
