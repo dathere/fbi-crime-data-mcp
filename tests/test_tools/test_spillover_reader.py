@@ -50,18 +50,14 @@ class TestReadSpillover:
 
     @pytest.mark.anyio
     async def test_read_with_offset(self, spillover_dir):
-        result = await read_spillover(
-            filename="get_nibrs_data_abc12345.json", offset=1000, limit=500
-        )
+        result = await read_spillover(filename="get_nibrs_data_abc12345.json", offset=1000, limit=500)
         assert "Showing: 1,000-1,500" in result
         # offset=1000 lands in the B section
         assert "BBB" in result
 
     @pytest.mark.anyio
     async def test_read_with_remaining(self, spillover_dir):
-        result = await read_spillover(
-            filename="get_nibrs_data_abc12345.json", offset=0, limit=100
-        )
+        result = await read_spillover(filename="get_nibrs_data_abc12345.json", offset=0, limit=100)
         assert "Remaining:" in result
         assert "use offset=100 to continue" in result
 
@@ -104,38 +100,28 @@ class TestReadSpillover:
 
     @pytest.mark.anyio
     async def test_negative_offset(self, spillover_dir):
-        result = await read_spillover(
-            filename="get_nibrs_data_abc12345.json", offset=-1
-        )
+        result = await read_spillover(filename="get_nibrs_data_abc12345.json", offset=-1)
         assert "Invalid offset" in result
 
     @pytest.mark.anyio
     async def test_zero_limit(self, spillover_dir):
-        result = await read_spillover(
-            filename="get_nibrs_data_abc12345.json", limit=0
-        )
+        result = await read_spillover(filename="get_nibrs_data_abc12345.json", limit=0)
         assert "Invalid limit" in result
 
     @pytest.mark.anyio
     async def test_negative_limit(self, spillover_dir):
-        result = await read_spillover(
-            filename="get_nibrs_data_abc12345.json", limit=-5
-        )
+        result = await read_spillover(filename="get_nibrs_data_abc12345.json", limit=-5)
         assert "Invalid limit" in result
 
     @pytest.mark.anyio
     async def test_offset_past_end(self, spillover_dir):
-        result = await read_spillover(
-            filename="get_nibrs_data_abc12345.json", offset=999_999
-        )
+        result = await read_spillover(filename="get_nibrs_data_abc12345.json", offset=999_999)
         assert "past end of file" in result
         assert "Total: 2,500 chars" in result
 
     @pytest.mark.anyio
     async def test_limit_capped_at_max(self, spillover_dir):
         """Requesting more than _MAX_LIMIT should be capped, not rejected."""
-        result = await read_spillover(
-            filename="get_nibrs_data_abc12345.json", limit=999_999
-        )
+        result = await read_spillover(filename="get_nibrs_data_abc12345.json", limit=999_999)
         # Should succeed (file is only 2500 chars anyway)
         assert "Total: 2,500 chars" in result
