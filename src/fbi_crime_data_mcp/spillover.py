@@ -79,7 +79,10 @@ class ResponseSpilloverMiddleware(Middleware):
                 return False
 
         try:
-            written = await asyncio.to_thread(_write_spillover)
+            if spillover_path.exists():
+                written = False
+            else:
+                written = await asyncio.to_thread(_write_spillover)
             if written:
                 logger.info(
                     "Tool %r response spilled to %s (%d chars)",
