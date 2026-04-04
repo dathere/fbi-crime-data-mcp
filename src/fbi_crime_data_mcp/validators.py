@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import re
 
 from .constants import US_STATES
@@ -54,8 +55,9 @@ def validate_ori_required(level: str, ori: str | None) -> str | None:
 
 def validate_year_int(year: int, param_name: str = "year") -> str | None:
     """Return error string if year is outside a reasonable range, else None."""
-    if not (1985 <= year <= 2030):
-        return f"Invalid {param_name} '{year}'. Must be between 1985 and 2030."
+    max_year = datetime.date.today().year + 5
+    if not (1985 <= year <= max_year):
+        return f"Invalid {param_name} '{year}'. Must be between 1985 and {max_year}."
     return None
 
 
@@ -181,6 +183,7 @@ def build_geo_path(
     appended after the level segment.
     """
     if level == "state":
+        assert state is not None, "state is required when level is 'state'"
         path = f"{base}/state/{state.upper()}"
     elif level == "agency":
         path = f"{base}/agency/{ori}"

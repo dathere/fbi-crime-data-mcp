@@ -318,9 +318,12 @@ class TestValidateYearInt:
         assert "1985" in err
 
     def test_too_high(self):
-        err = validate_year_int(2031)
+        import datetime
+
+        far_future = datetime.date.today().year + 6
+        err = validate_year_int(far_future)
         assert "Invalid" in err
-        assert "2030" in err
+        assert str(datetime.date.today().year + 5) in err
 
     def test_includes_param_name(self):
         err = validate_year_int(0, "start_year")
