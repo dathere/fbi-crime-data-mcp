@@ -38,7 +38,7 @@ class ResponseSpilloverMiddleware(Middleware):
             raise ValueError(f"max_chars must be positive, got {max_chars}")
         self.max_chars = max_chars
         self.preview_chars = preview_chars
-        self.excluded_tools = excluded_tools or {"manage_cache"}
+        self.excluded_tools = excluded_tools or {"manage_cache", "read_spillover"}
 
     async def on_call_tool(
         self,
