@@ -1,8 +1,28 @@
 # FBI Crime Data MCP Server
 
-An MCP (Model Context Protocol) server that provides access to the [FBI's Crime Data Explorer API](https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/docApi).
+An MCP (Model Context Protocol) server that provides access to the [FBI's Crime Data Explorer](https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/home) [API](https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/docApi).
 
-Query crime statistics, arrest data, hate crimes, NIBRS incidents, law enforcement employment, and more — directly from Claude or any MCP-compatible client.
+Query crime statistics, arrest data, hate crimes, NIBRS incidents, law enforcement employment, and more — directly from any MCP-compatible client.
+
+Created for data journalists, researchers, and anyone interested in exploring US crime data with the power of language models. Initially created for use by the [Policy Analyst Agent](https://github.com/dathere/qsv/blob/master/.claude/skills/agents/policy-analyst.md) of the [qsv Claude Cowork plugin](https://github.com/dathere/qsv?tab=readme-ov-file#qsv-blazing-fast-data-wrangling-toolkit).
+
+## Features
+
+- **16 tools** covering a wide range of crime data topics
+  - Crime trends and Summary Reporting System (SRS) crime data
+  - National Incident Based Reporting System (NIBRS) incident-based data and national estimates
+  - Arrest statistics with demographic breakdowns
+  - Hate crime incidents by bias motivation
+  - Expanded homicide and property crime details
+  - Police employment, Law Enforcement Officers Killed and Assaulted (LEOKA), Law Enforcement Suicide Data Collection (LESDC), and use of force
+  - Agency lookup, reference data, cache management, and spillover reading
+- **Three query levels** — national, state, and agency — with automatic parameter validation
+- **Smart yearly aggregation** — monthly API data is automatically rolled up into yearly totals (sums for counts, averages for rates, last value for population), with an option for monthly granularity
+- **Tiered disk-backed caching** — 90-day time-to-live (TTL) for stable data (trends, reference, summaries) and 30-day TTL for dynamic data (incidents, arrests, agency lookups)
+- **Spillover handling** — responses exceeding 128K characters are saved to disk with a preview returned, so large queries are never silently truncated
+- **Input validation** — date format/ordering checks, offense and bias code validation, and level-based parameter requirements with clear error messages
+- **Sliding-window rate limiting** — 1,000 requests/hour with transparent wait-time feedback
+- **Reference tools** for agency lookups (by state, Originating Agency Identifier (ORI), or district with name filtering) and code translations
 
 ## Quick Start
 
@@ -46,7 +66,7 @@ FBI_API_KEY=your-key uvx fbi-crime-data-mcp
 |------|-------------|
 | [`get_hate_crime_data`](src/fbi_crime_data_mcp/tools/hate_crime.py) | Hate crime incidents by bias motivation (30+ categories) |
 | [`get_expanded_homicide_data`](src/fbi_crime_data_mcp/tools/homicide.py) | Supplementary Homicide Reports — victim/offender demographics, weapons, circumstances |
-| [`get_expanded_property_data`](src/fbi_crime_data_mcp/tools/property_data.py) | Expanded property crime details — stolen/recovered values for burglary, larceny, MVT, robbery |
+| [`get_expanded_property_data`](src/fbi_crime_data_mcp/tools/property_data.py) | Expanded property crime details — stolen/recovered values for burglary, larceny, motor vehicle theft (MVT), robbery |
 
 ### Law Enforcement Data
 | Tool | Description |
