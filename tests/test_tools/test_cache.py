@@ -331,9 +331,7 @@ class TestSaveAndCollectStats:
         import fbi_crime_data_mcp.api_client as api_mod
 
         stats_file = tmp_path / "stats.json"
-        stats_file.write_text(
-            json.dumps({"col": {"hits": "bad", "misses": None}})
-        )
+        stats_file.write_text(json.dumps({"col": {"hits": "bad", "misses": None}}))
         monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
         assert _load_persisted_stats() == {"col": {"hits": 0, "misses": 0}}
 
@@ -342,9 +340,7 @@ class TestSaveAndCollectStats:
         import fbi_crime_data_mcp.api_client as api_mod
 
         stats_file = tmp_path / "stats.json"
-        stats_file.write_text(
-            json.dumps({"col": {"hits": -3, "misses": -1}})
-        )
+        stats_file.write_text(json.dumps({"col": {"hits": -3, "misses": -1}}))
         monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
         assert _load_persisted_stats() == {"col": {"hits": 0, "misses": 0}}
 
@@ -363,11 +359,13 @@ class TestSaveAndCollectStats:
 
         stats_file = tmp_path / "stats.json"
         stats_file.write_text(
-            json.dumps({
-                "good": {"hits": 10, "misses": 5},
-                "bad_counts": "string",
-                "bad_values": {"hits": [], "misses": {}},
-            })
+            json.dumps(
+                {
+                    "good": {"hits": 10, "misses": 5},
+                    "bad_counts": "string",
+                    "bad_values": {"hits": [], "misses": {}},
+                }
+            )
         )
         monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
         result = _load_persisted_stats()
