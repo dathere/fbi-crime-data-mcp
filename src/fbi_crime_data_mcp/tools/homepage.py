@@ -59,8 +59,9 @@ async def get_cde_homepage_summary(ctx: Context | None = None) -> str:
     """Get a summary of the FBI Crime Data Explorer (CDE) homepage.
 
     Returns the CDE mission statement, navigation structure, data freshness
-    (last refresh dates), available data date ranges, and national crime
-    trend summaries (percent changes for violent and property crime).
+    (last refresh dates), available data date ranges, and the full national
+    crime trends response (percent changes across 10 crime types, matching
+    the trends section displayed on the CDE homepage).
     Provides orientation on what the CDE offers and how current its data is.
     """
     app_ctx: AppContext = ctx.lifespan_context
