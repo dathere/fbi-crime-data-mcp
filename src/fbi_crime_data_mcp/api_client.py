@@ -174,5 +174,7 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
         timeout=30.0,
         headers={"Accept": "application/json"},
     ) as client:
-        yield AppContext(client=client)
-        _save_stats(server)
+        try:
+            yield AppContext(client=client)
+        finally:
+            _save_stats(server)

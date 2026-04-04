@@ -233,8 +233,8 @@ class TestManageCache:
         assert (spillover / "tool_abc123.json").exists()
 
 
-class TestSaveAndCollectStats:
-    """Tests for _save_stats, _collect_stats, and _load_persisted_stats in api_client."""
+class TestSaveAndLoadPersistedStats:
+    """Tests for _save_stats and _load_persisted_stats in api_client."""
 
     def test_save_stats_creates_file(self, tmp_path, monkeypatch):
         """_save_stats writes current session stats merged with persisted stats."""
