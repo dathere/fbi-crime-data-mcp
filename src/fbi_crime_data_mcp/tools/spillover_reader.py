@@ -38,10 +38,10 @@ async def read_spillover(
     limit = min(limit, _MAX_LIMIT)
 
     # Resolve and verify the path stays under SPILLOVER_DIR
-    filepath = (SPILLOVER_DIR / filename).resolve()
     try:
+        filepath = (SPILLOVER_DIR / filename).resolve()
         filepath.relative_to(SPILLOVER_DIR.resolve())
-    except ValueError:
+    except (ValueError, OSError, RuntimeError):
         return "Invalid filename. Use just the filename, not a path."
 
     if not filepath.is_file():
@@ -54,6 +54,9 @@ async def read_spillover(
         return f"Error reading file: {e}"
 
     total_chars = len(text)
+    if offset >= total_chars:
+        return f"File: {filename} | Total: {total_chars:,} chars | offset {offset:,} is past end of file."
+
     chunk = text[offset : offset + limit]
     remaining = total_chars - offset - len(chunk)
 
