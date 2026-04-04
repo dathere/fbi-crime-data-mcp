@@ -208,7 +208,7 @@ def _hit_rate() -> dict:
         per_collection[name] = {
             **counts,
             "total": col_total,
-            "hit_rate_pct": round(counts["hits"] / col_total * 100, 1),
+            "hit_rate_pct": round(counts["hits"] / col_total * 100, 1) if col_total else None,
         }
 
     return {

@@ -13,10 +13,14 @@ from fbi_crime_data_mcp.tools.cache import manage_cache
 @pytest.fixture
 def fake_cache(tmp_path, monkeypatch):
     """Create a fake cache directory with test entries."""
+    import fbi_crime_data_mcp.api_client as api_client_mod
     import fbi_crime_data_mcp.tools.cache as cache_mod
 
+    stats_file = tmp_path / "stats.json"
+
     monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
-    monkeypatch.setattr(cache_mod, "_STATS_FILE", tmp_path / "stats.json")
+    monkeypatch.setattr(cache_mod, "_STATS_FILE", stats_file)
+    monkeypatch.setattr(api_client_mod, "STATS_FILE", stats_file)
 
     # Create a collection directory and info file
     col_dir = tmp_path / "S_tools_call-abc123"
