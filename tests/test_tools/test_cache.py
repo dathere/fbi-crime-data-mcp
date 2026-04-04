@@ -236,7 +236,8 @@ class TestSaveAndCollectStats:
         monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
 
         monkeypatch.setattr(
-            api_mod, "_collect_stats",
+            api_mod,
+            "_collect_stats",
             lambda server: {"call_tool": {"hits": 5, "misses": 3}},
         )
 
@@ -259,7 +260,8 @@ class TestSaveAndCollectStats:
 
         # Mock _collect_stats to return current session stats
         monkeypatch.setattr(
-            api_mod, "_collect_stats",
+            api_mod,
+            "_collect_stats",
             lambda server: {"call_tool": {"hits": 3, "misses": 2}},
         )
 
@@ -279,7 +281,8 @@ class TestSaveAndCollectStats:
         monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
 
         monkeypatch.setattr(
-            api_mod, "_collect_stats",
+            api_mod,
+            "_collect_stats",
             lambda server: {"list_tools": {"hits": 1, "misses": 1}},
         )
 
