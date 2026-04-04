@@ -1,5 +1,7 @@
 """Tests for shared validation helpers."""
 
+import pytest
+
 from fbi_crime_data_mcp.validators import (
     build_geo_path,
     effective_aggregate,
@@ -390,6 +392,18 @@ class TestBuildGeoPath:
 
     def test_no_suffix(self):
         assert build_geo_path("/hate-crime", "national", suffix="") == "/hate-crime/national"
+
+    def test_state_none_raises(self):
+        with pytest.raises(ValueError, match="state is required"):
+            build_geo_path("/test", "state")
+
+    def test_ori_none_raises(self):
+        with pytest.raises(ValueError, match="ori is required"):
+            build_geo_path("/test", "agency")
+
+    def test_unknown_level_raises(self):
+        with pytest.raises(ValueError, match="level must be one of"):
+            build_geo_path("/test", "city")
 
 
 class TestEffectiveAggregate:

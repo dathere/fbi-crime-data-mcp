@@ -337,3 +337,52 @@ class TestPaginateResponse:
 
     def test_error_passthrough(self):
         assert paginate_response("Error: timeout", 0, 10) == "Error: timeout"
+
+    def test_negative_offset(self):
+        result = paginate_response(json.dumps([1, 2, 3]), -1, 10)
+        assert "Invalid offset" in result
+
+    def test_zero_limit(self):
+        result = paginate_response(json.dumps([1, 2, 3]), 0, 0)
+        assert "Invalid limit" in result
+
+    def test_non_list_non_dict_passthrough(self):
+        raw = json.dumps("just a string")
+        assert paginate_response(raw, 0, 10) == raw
+
+    def test_dict_with_non_list_values_passthrough(self):
+        raw = json.dumps({"key": "not_a_list"})
+        assert paginate_response(raw, 0, 10) == raw
+
+    def test_dict_with_empty_flat_passthrough(self):
+        """Dict of lists but no dict entries inside produces empty flat list → passthrough."""
+        raw = json.dumps({"group": [42, "string"]})
+        assert paginate_response(raw, 0, 10) == raw
+
+
+class TestProcessCrimeResponseEdgeCases:
+    def test_non_dict_data_passthrough(self):
+        """Array response passes through unchanged."""
+        raw = json.dumps([1, 2, 3])
+        assert process_crime_response(raw) == raw
+
+    def test_non_json_passthrough(self):
+        assert process_crime_response("Error: bad request") == "Error: bad request"
+
+
+class TestFilterAgenciesEdgeCases:
+    def test_dict_without_lists_passthrough(self):
+        """Dict where no values are lists passes through unchanged."""
+        raw = json.dumps({"key": "value", "count": 42})
+        assert filter_agencies_by_name(raw, "test") == raw
+
+    def test_non_list_groups_skipped(self):
+        """Non-list values in dict-of-groups are skipped during filtering."""
+        raw = json.dumps({"GROUP_A": [{"agency_name": "Test PD"}], "metadata": "info"})
+        result = json.loads(filter_agencies_by_name(raw, "test"))
+        assert "GROUP_A" in result
+        assert "metadata" not in result
+
+    def test_non_dict_non_list_passthrough(self):
+        raw = json.dumps("just a string")
+        assert filter_agencies_by_name(raw, "test") == raw

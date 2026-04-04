@@ -233,6 +233,101 @@ class TestManageCache:
         assert (spillover / "tool_abc123.json").exists()
 
 
+class TestCacheEdgeCases:
+    """Cover error/edge-case paths in cache status and clear."""
+
+    async def test_corrupt_info_file_skipped(self, tmp_path, monkeypatch):
+        """Corrupt JSON in info file is silently skipped."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        (tmp_path / "S_bad-info.json").write_text("not json{{")
+        r = await manage_cache("status")
+        data = json.loads(r)
+        assert data["total_entries"] == 0
+
+    async def test_corrupt_entry_file_skipped(self, tmp_path, monkeypatch):
+        """Corrupt JSON in cache entry is silently skipped."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        col_dir = tmp_path / "S_col-abc"
+        col_dir.mkdir()
+        info = {"version": 1, "collection": "col", "directory": str(col_dir)}
+        (tmp_path / "S_col-abc-info.json").write_text(json.dumps(info))
+        (col_dir / "bad_entry.json").write_text("{{corrupt")
+        r = await manage_cache("status")
+        data = json.loads(r)
+        assert data["total_entries"] == 0
+
+    async def test_invalid_created_at_skipped(self, tmp_path, monkeypatch):
+        """Invalid created_at datetime doesn't crash status."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        col_dir = tmp_path / "S_col-abc"
+        col_dir.mkdir()
+        info = {"version": 1, "collection": "col", "directory": str(col_dir)}
+        (tmp_path / "S_col-abc-info.json").write_text(json.dumps(info))
+        entry = {"created_at": "not-a-date", "expires_at": "also-bad"}
+        (col_dir / "entry.json").write_text(json.dumps(entry))
+        r = await manage_cache("status")
+        data = json.loads(r)
+        assert data["total_entries"] == 1
+        assert data["oldest_entry"] is None
+
+    async def test_entry_without_expires_kept_in_clear_expired(self, tmp_path, monkeypatch):
+        """Entries without expires_at are kept during clear_expired."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        col_dir = tmp_path / "S_col-abc"
+        col_dir.mkdir()
+        info = {"version": 1, "collection": "col", "directory": str(col_dir)}
+        (tmp_path / "S_col-abc-info.json").write_text(json.dumps(info))
+        entry = {"created_at": "2026-01-01T00:00:00+00:00"}
+        (col_dir / "no_expiry.json").write_text(json.dumps(entry))
+        r = await manage_cache("clear_expired")
+        data = json.loads(r)
+        assert data["kept"] == 1
+        assert data["removed"] == 0
+
+    async def test_clear_expired_with_corrupt_entry(self, tmp_path, monkeypatch):
+        """Corrupt entry during clear_expired is kept (not removed)."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        col_dir = tmp_path / "S_col-abc"
+        col_dir.mkdir()
+        info = {"version": 1, "collection": "col", "directory": str(col_dir)}
+        (tmp_path / "S_col-abc-info.json").write_text(json.dumps(info))
+        (col_dir / "corrupt.json").write_text("{{bad json")
+        r = await manage_cache("clear_expired")
+        data = json.loads(r)
+        assert data["kept"] == 1
+        assert data["removed"] == 0
+
+    async def test_clear_corrupt_info_file_skipped(self, tmp_path, monkeypatch):
+        """Corrupt info file during clear is skipped."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        (tmp_path / "S_bad-info.json").write_text("not json")
+        r = await manage_cache("clear")
+        data = json.loads(r)
+        assert data["removed"] == 0
+
+    async def test_spillover_dir_missing_returns_zero(self, tmp_path, monkeypatch):
+        """_spillover_stats returns zeros when dir doesn't exist."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        monkeypatch.setattr(cache_mod, "_SPILLOVER_DIR", tmp_path / "nonexistent")
+        r = await manage_cache("status")
+        data = json.loads(r)
+        assert data["spillover"] == {"files": 0, "size_kb": 0}
+
+
 class TestSaveAndLoadPersistedStats:
     """Tests for _save_stats and _load_persisted_stats in api_client."""
 
@@ -352,6 +447,20 @@ class TestSaveAndLoadPersistedStats:
         stats_file.write_text(json.dumps([1, 2, 3]))
         monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
         assert _load_persisted_stats() == {}
+
+    def test_save_stats_handles_oserror(self, tmp_path, monkeypatch):
+        """_save_stats doesn't crash when write fails."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "readonly" / "stats.json"
+        (tmp_path / "readonly").mkdir()
+        (tmp_path / "readonly").chmod(0o444)
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+        monkeypatch.setattr(api_mod, "_collect_stats", lambda s: {})
+
+        _save_stats(MagicMock())  # should not raise
+
+        (tmp_path / "readonly").chmod(0o755)
 
     def test_load_persisted_stats_mixed_valid_invalid(self, tmp_path, monkeypatch):
         """Valid entries are kept while invalid ones are dropped."""

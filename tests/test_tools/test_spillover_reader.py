@@ -120,6 +120,22 @@ class TestReadSpillover:
         assert "Total: 2,500 chars" in result
 
     @pytest.mark.anyio
+    async def test_unicode_decode_error(self, spillover_dir):
+        """Binary file that can't be decoded as UTF-8 returns error."""
+        (spillover_dir / "binary_data.json").write_bytes(b"\x80\x81\x82\x83")
+        result = await read_spillover(filename="binary_data.json")
+        assert "Error decoding file" in result
+
+    @pytest.mark.anyio
+    async def test_list_no_dir(self, tmp_path, monkeypatch):
+        """List when spillover dir doesn't exist."""
+        import fbi_crime_data_mcp.tools.spillover_reader as mod
+
+        monkeypatch.setattr(mod, "SPILLOVER_DIR", tmp_path / "nonexistent")
+        result = await read_spillover(filename="list")
+        assert "No spillover files found" in result
+
+    @pytest.mark.anyio
     async def test_limit_capped_at_max(self, spillover_dir):
         """Requesting more than _MAX_LIMIT should be capped, not rejected."""
         result = await read_spillover(filename="get_nibrs_data_abc12345.json", limit=999_999)

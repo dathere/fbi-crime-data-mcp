@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
+import pytest
 from fastmcp.server.middleware.middleware import MiddlewareContext
 from fastmcp.tools.base import ToolResult
 from mcp.types import TextContent
@@ -95,6 +96,44 @@ class TestSpilloverMiddleware:
 
         assert result is big
         assert not (tmp_path / "spillover").exists()
+
+    async def test_max_chars_zero_raises(self):
+        with pytest.raises(ValueError, match="max_chars must be positive"):
+            ResponseSpilloverMiddleware(max_chars=0)
+
+    async def test_non_text_content_passes_through(self, tmp_path, monkeypatch):
+        from mcp.types import ImageContent
+
+        import fbi_crime_data_mcp.spillover as mod
+
+        monkeypatch.setattr(mod, "SPILLOVER_DIR", tmp_path / "spillover")
+
+        mw = ResponseSpilloverMiddleware(max_chars=100)
+        # Result with non-TextContent only
+        image_content = ImageContent(type="image", data="base64data", mimeType="image/png")
+        result = ToolResult(content=[image_content])
+        call_next = AsyncMock(return_value=result)
+
+        out = await mw.on_call_tool(_make_context(), call_next)
+        assert out is result  # passed through unchanged
+
+    async def test_write_failure_returns_preview(self, tmp_path, monkeypatch):
+        import fbi_crime_data_mcp.spillover as mod
+
+        # Point to a read-only dir so write fails
+        spillover_dir = tmp_path / "spillover"
+        spillover_dir.mkdir()
+        spillover_dir.chmod(0o444)
+        monkeypatch.setattr(mod, "SPILLOVER_DIR", spillover_dir)
+
+        mw = ResponseSpilloverMiddleware(max_chars=100, preview_chars=50)
+        call_next = AsyncMock(return_value=_make_result("w" * 200))
+
+        result = await mw.on_call_tool(_make_context(), call_next)
+        text = result.content[0].text
+        assert "filesystem error" in text or "PREVIEW" in text
+
+        spillover_dir.chmod(0o755)
 
     async def test_filename_contains_tool_name(self, tmp_path, monkeypatch):
         import fbi_crime_data_mcp.spillover as mod
