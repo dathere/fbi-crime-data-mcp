@@ -28,7 +28,7 @@ An MCP (Model Context Protocol) server that provides access to the [FBI's Crime 
 FBI_API_KEY=your-key uvx fbi-crime-data-mcp
 ```
 
-## Available Tools (15)
+## Available Tools (16)
 
 ### Core Crime Data
 | Tool | Description |
@@ -60,6 +60,7 @@ FBI_API_KEY=your-key uvx fbi-crime-data-mcp
 | [`lookup_agency`](src/fbi_crime_data_mcp/tools/agency.py) | Find law enforcement agencies by state, ORI code, or judicial district |
 | [`get_reference_data`](src/fbi_crime_data_mcp/tools/reference.py) | State lists, offense/bias code lookups, data refresh dates |
 | [`manage_cache`](src/fbi_crime_data_mcp/tools/cache.py) | View cache stats, clear all entries, or clear only expired entries |
+| [`read_spillover`](src/fbi_crime_data_mcp/tools/spillover_reader.py) | Read spillover files saved when tool responses exceed the size limit |
 
 ## Large Responses
 
