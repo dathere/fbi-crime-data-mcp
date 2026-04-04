@@ -1,6 +1,7 @@
 """Tests for read_spillover tool."""
 
 import json
+import os
 
 import pytest
 
@@ -90,6 +91,16 @@ class TestReadSpillover:
         result = await read_spillover(filename="..%2F..%2Fetc%2Fpasswd")
         # This won't resolve outside, but the file won't exist
         assert "File not found" in result or "Invalid filename" in result
+
+    @pytest.mark.anyio
+    async def test_path_traversal_symlink(self, spillover_dir, tmp_path):
+        """Symlink inside spillover dir pointing outside must be rejected by resolve()+relative_to()."""
+        outside_file = tmp_path / "secret.txt"
+        outside_file.write_text("sensitive data")
+        symlink_path = spillover_dir / "legit_looking.json"
+        os.symlink(outside_file, symlink_path)
+        result = await read_spillover(filename="legit_looking.json")
+        assert "Invalid filename" in result
 
     @pytest.mark.anyio
     async def test_negative_offset(self, spillover_dir):
