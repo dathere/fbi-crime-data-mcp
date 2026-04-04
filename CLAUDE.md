@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FBI Crime Data MCP Server — a Python MCP server providing 15 tools for querying the FBI Crime Data Explorer API (`https://api.usa.gov/crime/fbi/cde`). Built with `fastmcp` (v3.2+) and `httpx`, deployable via `uvx fbi-crime-data-mcp`.
+FBI Crime Data MCP Server — a Python MCP server providing 16 tools for querying the FBI Crime Data Explorer API (`https://api.usa.gov/crime/fbi/cde`). Built with `fastmcp` (v3.2+) and `httpx`, deployable via `uvx fbi-crime-data-mcp`.
 
 ## Build & Run
 

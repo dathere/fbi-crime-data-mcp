@@ -42,6 +42,7 @@ from .tools import (  # noqa: E402, F401
     nibrs_estimation,
     property_data,
     reference,
+    spillover_reader,
     summarized,
     trends,
     use_of_force,
