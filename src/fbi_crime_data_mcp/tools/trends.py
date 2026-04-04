@@ -30,10 +30,10 @@ async def get_crime_trends(
         if err:
             return err
         params["to"] = to_year
-    if from_year and to_year:
-        err = validate_date_order_yyyy(from_year, to_year)
-        if err:
-            return err
+        if from_year:
+            err = validate_date_order_yyyy(from_year, to_year)
+            if err:
+                return err
 
     app_ctx: AppContext = ctx.lifespan_context
     return await app_ctx.api_get("/trends/national", params)

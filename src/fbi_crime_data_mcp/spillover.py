@@ -68,10 +68,17 @@ class ResponseSpilloverMiddleware(Middleware):
 
         preview = full_text[: self.preview_chars]
 
+        def _write_spillover() -> bool:
+            """Check-then-write in a single thread to avoid blocking the event loop."""
+            if spillover_path.exists():
+                return False
+            SPILLOVER_DIR.mkdir(parents=True, exist_ok=True)
+            spillover_path.write_text(full_text, encoding="utf-8")
+            return True
+
         try:
-            if not spillover_path.exists():
-                SPILLOVER_DIR.mkdir(parents=True, exist_ok=True)
-                await asyncio.to_thread(spillover_path.write_text, full_text, encoding="utf-8")
+            written = await asyncio.to_thread(_write_spillover)
+            if written:
                 logger.info(
                     "Tool %r response spilled to %s (%d chars)",
                     tool_name,
