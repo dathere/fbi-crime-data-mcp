@@ -8,6 +8,10 @@ SPILLOVER_DIR = CACHE_DIR / "spillover"
 STATS_FILE = CACHE_DIR / "stats.json"
 SPILLOVER_CHAR_LIMIT = 128_000
 SPILLOVER_PREVIEW_CHARS = 2_000
+CACHE_COLLECTION_NAMES = [
+    "list_tools", "list_resources", "list_prompts",
+    "read_resource", "get_prompt", "call_tool",
+]
 
 # Summarized (SRS) offense codes
 SRS_OFFENSES: dict[str, str] = {

@@ -15,7 +15,7 @@ import httpx
 from fastmcp import FastMCP
 from fastmcp.server.middleware.caching import ResponseCachingMiddleware
 
-from .constants import BASE_URL, STATS_FILE
+from .constants import BASE_URL, CACHE_COLLECTION_NAMES, STATS_FILE
 
 
 class RateLimiter:
@@ -106,10 +106,7 @@ def _get_api_key() -> str:
 
 def _collect_stats(server: FastMCP) -> dict[str, dict[str, int]]:
     """Aggregate cache hit/miss stats from all caching middleware."""
-    collection_names = [
-        "list_tools", "list_resources", "list_prompts",
-        "read_resource", "get_prompt", "call_tool",
-    ]
+    collection_names = CACHE_COLLECTION_NAMES
     totals: dict[str, dict[str, int]] = {}
     for mw in server.middleware:
         if not isinstance(mw, ResponseCachingMiddleware):

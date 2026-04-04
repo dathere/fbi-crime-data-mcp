@@ -2,9 +2,11 @@
 
 import json
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
 
 import pytest
 
+from fbi_crime_data_mcp.api_client import _load_persisted_stats, _save_stats
 from fbi_crime_data_mcp.tools.cache import manage_cache
 
 
@@ -172,11 +174,13 @@ class TestManageCache:
 
     async def test_status_includes_persisted_stats(self, fake_cache, monkeypatch):
         """Persisted stats from previous sessions are merged into hit_rate."""
+        import fbi_crime_data_mcp.api_client as api_mod
         import fbi_crime_data_mcp.tools.cache as cache_mod
 
         stats_file = fake_cache / "stats.json"
         stats_file.write_text(json.dumps({"call_tool": {"hits": 10, "misses": 5}}))
         monkeypatch.setattr(cache_mod, "_STATS_FILE", stats_file)
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
 
         r = await manage_cache("status")
         data = json.loads(r)
@@ -219,3 +223,104 @@ class TestManageCache:
         await manage_cache("clear_expired")
         assert spillover.exists()
         assert (spillover / "tool_abc123.json").exists()
+
+
+class TestSaveAndCollectStats:
+    """Tests for _save_stats, _collect_stats, and _load_persisted_stats in api_client."""
+
+    def test_save_stats_creates_file(self, tmp_path, monkeypatch):
+        """_save_stats writes current session stats merged with persisted stats."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+
+        # Create a mock server with a mock caching middleware
+        mock_col_stats = MagicMock()
+        mock_col_stats.get.hit = 5
+        mock_col_stats.get.miss = 3
+
+        mock_stats = MagicMock()
+        mock_stats.call_tool = mock_col_stats
+        # Return None for other collections
+        mock_stats.list_tools = None
+        mock_stats.list_resources = None
+        mock_stats.list_prompts = None
+        mock_stats.read_resource = None
+        mock_stats.get_prompt = None
+
+        mock_mw = MagicMock(spec=["statistics"])
+        mock_mw.statistics.return_value = mock_stats
+
+        mock_server = MagicMock()
+        mock_server.middleware = [mock_mw]
+
+        monkeypatch.setattr(
+            api_mod, "_collect_stats",
+            lambda server: {"call_tool": {"hits": 5, "misses": 3}},
+        )
+
+        _save_stats(mock_server)
+
+        assert stats_file.exists()
+        data = json.loads(stats_file.read_text())
+        assert data["call_tool"]["hits"] == 5
+        assert data["call_tool"]["misses"] == 3
+
+    def test_save_stats_merges_with_existing(self, tmp_path, monkeypatch):
+        """_save_stats merges current stats with previously persisted stats."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        # Pre-populate with existing stats
+        stats_file.write_text(json.dumps({"call_tool": {"hits": 10, "misses": 5}}))
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+
+        # Mock _collect_stats to return current session stats
+        monkeypatch.setattr(
+            api_mod, "_collect_stats",
+            lambda server: {"call_tool": {"hits": 3, "misses": 2}},
+        )
+
+        mock_server = MagicMock()
+        _save_stats(mock_server)
+
+        data = json.loads(stats_file.read_text())
+        assert data["call_tool"]["hits"] == 13  # 10 + 3
+        assert data["call_tool"]["misses"] == 7  # 5 + 2
+
+    def test_save_stats_merges_new_collection(self, tmp_path, monkeypatch):
+        """_save_stats adds new collections alongside existing ones."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        stats_file.write_text(json.dumps({"call_tool": {"hits": 10, "misses": 5}}))
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+
+        monkeypatch.setattr(
+            api_mod, "_collect_stats",
+            lambda server: {"list_tools": {"hits": 1, "misses": 1}},
+        )
+
+        mock_server = MagicMock()
+        _save_stats(mock_server)
+
+        data = json.loads(stats_file.read_text())
+        assert data["call_tool"] == {"hits": 10, "misses": 5}
+        assert data["list_tools"] == {"hits": 1, "misses": 1}
+
+    def test_load_persisted_stats_missing_file(self, tmp_path, monkeypatch):
+        """_load_persisted_stats returns empty dict when file doesn't exist."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        monkeypatch.setattr(api_mod, "STATS_FILE", tmp_path / "nonexistent.json")
+        assert _load_persisted_stats() == {}
+
+    def test_load_persisted_stats_invalid_json(self, tmp_path, monkeypatch):
+        """_load_persisted_stats returns empty dict on invalid JSON."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        stats_file.write_text("not json")
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+        assert _load_persisted_stats() == {}

@@ -9,23 +9,12 @@ from pathlib import Path
 
 from fastmcp.server.middleware.caching import ResponseCachingMiddleware
 
+from ..api_client import _load_persisted_stats
+from ..constants import CACHE_COLLECTION_NAMES
 from ..constants import CACHE_DIR as _CACHE_DIR
 from ..constants import SPILLOVER_DIR as _SPILLOVER_DIR
 from ..constants import STATS_FILE as _STATS_FILE
 from ..server import mcp
-
-
-def _load_persisted_stats() -> dict[str, dict[str, int]]:
-    """Load persisted cache stats from disk."""
-    if not _STATS_FILE.is_file():
-        return {}
-    try:
-        data = json.loads(_STATS_FILE.read_text())
-        if isinstance(data, dict):
-            return data
-    except (json.JSONDecodeError, OSError):
-        pass
-    return {}
 
 
 def _parse_aware_dt(iso_str: str) -> datetime:
@@ -183,14 +172,7 @@ def _spillover_stats() -> dict:
 
 def _hit_rate() -> dict:
     """Gather cache hit/miss stats, combining persisted history with current session."""
-    collection_names = [
-        "list_tools",
-        "list_resources",
-        "list_prompts",
-        "read_resource",
-        "get_prompt",
-        "call_tool",
-    ]
+    collection_names = CACHE_COLLECTION_NAMES
     # Start with persisted stats from previous sessions
     totals: dict[str, dict[str, int]] = {}
     persisted = _load_persisted_stats()
