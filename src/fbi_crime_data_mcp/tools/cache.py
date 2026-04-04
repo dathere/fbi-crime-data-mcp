@@ -11,7 +11,21 @@ from fastmcp.server.middleware.caching import ResponseCachingMiddleware
 
 from ..constants import CACHE_DIR as _CACHE_DIR
 from ..constants import SPILLOVER_DIR as _SPILLOVER_DIR
+from ..constants import STATS_FILE as _STATS_FILE
 from ..server import mcp
+
+
+def _load_persisted_stats() -> dict[str, dict[str, int]]:
+    """Load persisted cache stats from disk."""
+    if not _STATS_FILE.is_file():
+        return {}
+    try:
+        data = json.loads(_STATS_FILE.read_text())
+        if isinstance(data, dict):
+            return data
+    except (json.JSONDecodeError, OSError):
+        pass
+    return {}
 
 
 def _parse_aware_dt(iso_str: str) -> datetime:
@@ -142,7 +156,7 @@ def _cache_status() -> str:
         "oldest_entry": oldest.isoformat() if oldest else None,
         "newest_entry": newest.isoformat() if newest else None,
         "collections": collections,
-        "session_hit_rate": _session_hit_rate(),
+        "hit_rate": _hit_rate(),
         "spillover": _spillover_stats(),
     }
     return json.dumps(result, indent=2)
@@ -167,8 +181,8 @@ def _spillover_stats() -> dict:
     }
 
 
-def _session_hit_rate() -> dict:
-    """Gather in-memory cache hit/miss stats from middleware (current session only)."""
+def _hit_rate() -> dict:
+    """Gather cache hit/miss stats, combining persisted history with current session."""
     collection_names = [
         "list_tools",
         "list_resources",
@@ -177,7 +191,14 @@ def _session_hit_rate() -> dict:
         "get_prompt",
         "call_tool",
     ]
+    # Start with persisted stats from previous sessions
     totals: dict[str, dict[str, int]] = {}
+    persisted = _load_persisted_stats()
+    for name, counts in persisted.items():
+        if name in collection_names:
+            totals[name] = {"hits": counts.get("hits", 0), "misses": counts.get("misses", 0)}
+
+    # Add current session stats
     for mw in mcp.middleware:
         if not isinstance(mw, ResponseCachingMiddleware):
             continue
@@ -209,7 +230,7 @@ def _session_hit_rate() -> dict:
         }
 
     return {
-        "note": "In-memory stats for current server session only (resets on restart)",
+        "note": "Cumulative stats across all sessions (persisted to disk)",
         "hits": total_hits,
         "misses": total_misses,
         "total": total_requests,
@@ -269,13 +290,18 @@ def _clear_cache(expired_only: bool) -> str:
             except OSError:
                 pass
 
-    # Clear spillover files on full clear
+    # Clear spillover files and persisted stats on full clear
     spillover_removed = 0
-    if not expired_only and _SPILLOVER_DIR.is_dir():
-        spillover_count = len(list(_SPILLOVER_DIR.glob("*.json")))
+    if not expired_only:
+        if _SPILLOVER_DIR.is_dir():
+            spillover_count = len(list(_SPILLOVER_DIR.glob("*.json")))
+            try:
+                shutil.rmtree(_SPILLOVER_DIR)
+                spillover_removed = spillover_count
+            except OSError:
+                pass
         try:
-            shutil.rmtree(_SPILLOVER_DIR)
-            spillover_removed = spillover_count
+            _STATS_FILE.unlink(missing_ok=True)
         except OSError:
             pass
 

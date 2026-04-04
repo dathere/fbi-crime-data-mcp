@@ -14,6 +14,7 @@ def fake_cache(tmp_path, monkeypatch):
     import fbi_crime_data_mcp.tools.cache as cache_mod
 
     monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_mod, "_STATS_FILE", tmp_path / "stats.json")
 
     # Create a collection directory and info file
     col_dir = tmp_path / "S_tools_call-abc123"
@@ -61,8 +62,8 @@ class TestManageCache:
         assert data["active_entries"] == 1
         assert data["expired_entries"] == 1
         assert "tools/call" in data["collections"]
-        # session_hit_rate is present; no middleware in tests → zero totals
-        hr = data["session_hit_rate"]
+        # hit_rate is present; no middleware in tests → zero totals
+        hr = data["hit_rate"]
         assert hr["total"] == 0
         assert hr["hit_rate_pct"] is None
         # spillover stats present
@@ -168,6 +169,43 @@ class TestManageCache:
         data = json.loads(r)
         assert data["spillover_removed"] == 1
         assert not spillover.exists()
+
+    async def test_status_includes_persisted_stats(self, fake_cache, monkeypatch):
+        """Persisted stats from previous sessions are merged into hit_rate."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        stats_file = fake_cache / "stats.json"
+        stats_file.write_text(json.dumps({"call_tool": {"hits": 10, "misses": 5}}))
+        monkeypatch.setattr(cache_mod, "_STATS_FILE", stats_file)
+
+        r = await manage_cache("status")
+        data = json.loads(r)
+        hr = data["hit_rate"]
+        assert hr["hits"] == 10
+        assert hr["misses"] == 5
+        assert hr["total"] == 15
+
+    async def test_clear_removes_stats_file(self, fake_cache, monkeypatch):
+        """Full clear removes the persisted stats file."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        stats_file = fake_cache / "stats.json"
+        stats_file.write_text(json.dumps({"call_tool": {"hits": 10, "misses": 5}}))
+        monkeypatch.setattr(cache_mod, "_STATS_FILE", stats_file)
+
+        await manage_cache("clear")
+        assert not stats_file.exists()
+
+    async def test_clear_expired_keeps_stats_file(self, fake_cache, monkeypatch):
+        """Clearing expired entries does not remove persisted stats."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        stats_file = fake_cache / "stats.json"
+        stats_file.write_text(json.dumps({"call_tool": {"hits": 10, "misses": 5}}))
+        monkeypatch.setattr(cache_mod, "_STATS_FILE", stats_file)
+
+        await manage_cache("clear_expired")
+        assert stats_file.exists()
 
     async def test_clear_expired_keeps_spillover(self, fake_cache, monkeypatch):
         """Clearing expired entries does not touch spillover."""

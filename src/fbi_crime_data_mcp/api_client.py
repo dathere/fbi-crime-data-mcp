@@ -13,8 +13,9 @@ from typing import Any
 
 import httpx
 from fastmcp import FastMCP
+from fastmcp.server.middleware.caching import ResponseCachingMiddleware
 
-from .constants import BASE_URL
+from .constants import BASE_URL, STATS_FILE
 
 
 class RateLimiter:
@@ -103,6 +104,59 @@ def _get_api_key() -> str:
     return key
 
 
+def _collect_stats(server: FastMCP) -> dict[str, dict[str, int]]:
+    """Aggregate cache hit/miss stats from all caching middleware."""
+    collection_names = [
+        "list_tools", "list_resources", "list_prompts",
+        "read_resource", "get_prompt", "call_tool",
+    ]
+    totals: dict[str, dict[str, int]] = {}
+    for mw in server.middleware:
+        if not isinstance(mw, ResponseCachingMiddleware):
+            continue
+        stats = mw.statistics()
+        for name in collection_names:
+            col_stats = getattr(stats, name, None)
+            if col_stats is None:
+                continue
+            if name not in totals:
+                totals[name] = {"hits": 0, "misses": 0}
+            totals[name]["hits"] += col_stats.get.hit
+            totals[name]["misses"] += col_stats.get.miss
+    return totals
+
+
+def _save_stats(server: FastMCP) -> None:
+    """Save aggregated cache stats to disk."""
+    current = _collect_stats(server)
+    # Merge with any previously persisted stats
+    persisted = _load_persisted_stats()
+    for name, counts in current.items():
+        if name in persisted:
+            persisted[name]["hits"] += counts["hits"]
+            persisted[name]["misses"] += counts["misses"]
+        else:
+            persisted[name] = dict(counts)
+    try:
+        STATS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        STATS_FILE.write_text(json.dumps(persisted, indent=2))
+    except OSError:
+        pass
+
+
+def _load_persisted_stats() -> dict[str, dict[str, int]]:
+    """Load persisted cache stats from disk."""
+    if not STATS_FILE.is_file():
+        return {}
+    try:
+        data = json.loads(STATS_FILE.read_text())
+        if isinstance(data, dict):
+            return data
+    except (json.JSONDecodeError, OSError):
+        pass
+    return {}
+
+
 @asynccontextmanager
 async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
     """Manage the shared httpx client and rate limiter."""
@@ -114,3 +168,4 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
         headers={"Accept": "application/json"},
     ) as client:
         yield AppContext(client=client)
+        _save_stats(server)
