@@ -43,14 +43,14 @@ _STABLE_CONTENT = {
             "description": "Download bulk data files and documentation",
             "url": "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/docdownload",
         },
-        "about": {
-            "label": "About",
-            "description": "About the Crime Data Explorer and UCR Program",
-            "url": "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/about",
+        "help_center": {
+            "label": "Help Center",
+            "description": "Help and support for the Crime Data Explorer",
+            "url": "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/home",
         },
     },
     "homepage_url": "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/home",
-    "_stable_content_version": "2026-03",
+    "_stable_content_version": "2026-04",
 }
 
 
@@ -59,14 +59,16 @@ async def get_cde_homepage_summary(ctx: Context | None = None) -> str:
     """Get a summary of the FBI Crime Data Explorer (CDE) homepage.
 
     Returns the CDE mission statement, navigation structure, data freshness
-    (last refresh dates), and available data date ranges. Provides orientation
-    on what the CDE offers and how current its data is.
+    (last refresh dates), available data date ranges, and national crime
+    trend summaries (percent changes for violent and property crime).
+    Provides orientation on what the CDE offers and how current its data is.
     """
     app_ctx: AppContext = ctx.lifespan_context
 
-    refresh_raw, properties_raw = await asyncio.gather(
+    refresh_raw, properties_raw, trends_raw = await asyncio.gather(
         app_ctx.api_get("/refresh-date"),
         app_ctx.api_get("/lookup/cde_properties"),
+        app_ctx.api_get("/trends/national"),
     )
 
     try:
@@ -79,10 +81,16 @@ async def get_cde_homepage_summary(ctx: Context | None = None) -> str:
     except (json.JSONDecodeError, TypeError):
         properties_data = properties_raw
 
+    try:
+        trends_data = json.loads(trends_raw)
+    except (json.JSONDecodeError, TypeError):
+        trends_data = trends_raw
+
     summary = {
         **_STABLE_CONTENT,
         "data_refresh_dates": refresh_data,
         "data_properties": properties_data,
+        "crime_trends": trends_data,
     }
 
     return json.dumps(summary, indent=2)

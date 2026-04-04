@@ -27,13 +27,15 @@ class TestGetCdeHomepageSummary:
         data = json.loads(result)
         assert "data_refresh_dates" in data
         assert "data_properties" in data
+        assert "crime_trends" in data
 
-    async def test_calls_both_api_endpoints(self, ctx, app_ctx):
+    async def test_calls_all_api_endpoints(self, ctx, app_ctx):
         app_ctx.api_get.return_value = "{}"
         await get_cde_homepage_summary(ctx=ctx)
         calls = [c.args[0] for c in app_ctx.api_get.call_args_list]
         assert "/refresh-date" in calls
         assert "/lookup/cde_properties" in calls
+        assert "/trends/national" in calls
 
     async def test_handles_api_error_gracefully(self, ctx, app_ctx):
         app_ctx.api_get.return_value = "Error: Request timed out."
@@ -51,7 +53,7 @@ class TestGetCdeHomepageSummary:
         assert "state_agency_data" in nav
         assert "data_discovery_tool" in nav
         assert "documents_downloads" in nav
-        assert "about" in nav
+        assert "help_center" in nav
         for entry in nav.values():
             assert "label" in entry
             assert "url" in entry
