@@ -149,3 +149,46 @@ class TestSpilloverMiddleware:
         spillover_files = list((tmp_path / "spillover").glob("*.json"))
         assert len(spillover_files) == 1
         assert spillover_files[0].name.startswith("lookup_agency_")
+
+    async def test_file_exists_error_returns_false(self, tmp_path, monkeypatch):
+        """When spillover file already exists on disk, _write_spillover returns False."""
+        import fbi_crime_data_mcp.spillover as mod
+
+        spillover_dir = tmp_path / "spillover"
+        spillover_dir.mkdir()
+        monkeypatch.setattr(mod, "SPILLOVER_DIR", spillover_dir)
+
+        mw = ResponseSpilloverMiddleware(max_chars=100, preview_chars=50)
+        big_text = "q" * 200
+        call_next = AsyncMock(return_value=_make_result(big_text))
+
+        # First call creates the file
+        await mw.on_call_tool(_make_context(), call_next)
+        files = list(spillover_dir.glob("*.json"))
+        assert len(files) == 1
+
+        # Remove the file but leave the path check pass by writing it back manually
+        # Actually, to hit FileExistsError in _write_spillover, we need the exists()
+        # check to return False but the file to exist by the time open("x") runs.
+        # Simpler: pre-create the file, remove it from exists cache, call again.
+        # The duplicate test already covers the exists() fast path.
+        # Instead, let's mock exists() to return False so _write_spillover is called,
+        # but the file is already there → FileExistsError.
+        import pathlib
+        from unittest.mock import patch
+
+        original_exists = pathlib.Path.exists
+
+        def patched_exists(self, *args, **kwargs):
+            if self.parent == spillover_dir and self.suffix == ".json":
+                return False  # force _write_spillover to be called
+            return original_exists(self, *args, **kwargs)
+
+        with patch.object(pathlib.Path, "exists", patched_exists):
+            result = await mw.on_call_tool(_make_context(), call_next)
+            # Should succeed (file exists, FileExistsError caught, returns preview)
+            text = result.content[0].text
+            assert "saved to" in text or "PREVIEW" in text
+
+        # Still only one file
+        assert len(list(spillover_dir.glob("*.json"))) == 1

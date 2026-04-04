@@ -11,7 +11,7 @@ import httpx
 import pytest
 import respx
 
-from fbi_crime_data_mcp.api_client import AppContext, RateLimiter, _collect_stats, _get_api_key
+from fbi_crime_data_mcp.api_client import AppContext, RateLimiter, _collect_stats, _get_api_key, app_lifespan
 
 # ── RateLimiter ──────────────────────────────────────────────────────────────
 
@@ -281,3 +281,27 @@ class TestCollectStats:
         server.middleware = [fake_mw]
         result = _collect_stats(server)
         assert result == {}
+
+
+# ── app_lifespan ────────────────────────────────────────────────────────────
+
+
+class TestAppLifespan:
+    async def test_yields_app_context_and_saves_stats(self, monkeypatch):
+        """app_lifespan yields an AppContext and saves stats on exit."""
+        from unittest.mock import MagicMock
+
+        monkeypatch.setenv("FBI_API_KEY", "test-key")
+        # Mock _save_stats to verify it's called
+        save_calls = []
+        monkeypatch.setattr(
+            "fbi_crime_data_mcp.api_client._save_stats",
+            lambda server: save_calls.append(server),
+        )
+
+        mock_server = MagicMock()
+        async with app_lifespan(mock_server) as ctx:
+            assert isinstance(ctx, AppContext)
+            assert ctx.client is not None
+
+        assert len(save_calls) == 1

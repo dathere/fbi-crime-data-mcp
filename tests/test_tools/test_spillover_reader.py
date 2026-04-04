@@ -136,6 +136,41 @@ class TestReadSpillover:
         assert "No spillover files found" in result
 
     @pytest.mark.anyio
+    async def test_read_oserror(self, spillover_dir):
+        """OSError reading file content returns error message."""
+        import pathlib
+        from unittest.mock import patch
+
+        original_read_text = pathlib.Path.read_text
+
+        def patched_read_text(self, *args, **kwargs):
+            if self.name == "get_nibrs_data_abc12345.json" and self.parent == spillover_dir:
+                raise OSError("disk read error")
+            return original_read_text(self, *args, **kwargs)
+
+        with patch.object(pathlib.Path, "read_text", patched_read_text):
+            result = await read_spillover(filename="get_nibrs_data_abc12345.json")
+            assert "Error reading file" in result
+
+    @pytest.mark.anyio
+    async def test_list_stat_oserror(self, spillover_dir):
+        """OSError on stat in list shows 0 size."""
+        import pathlib
+        from unittest.mock import patch
+
+        original_stat = pathlib.Path.stat
+
+        def patched_stat(self, *args, **kwargs):
+            if self.parent == spillover_dir and self.suffix == ".json":
+                raise OSError("stat failed")
+            return original_stat(self, *args, **kwargs)
+
+        with patch.object(pathlib.Path, "stat", patched_stat):
+            result = await read_spillover(filename="list")
+            parsed = json.loads(result)
+            assert parsed["spillover_files"][0]["size_kb"] == 0
+
+    @pytest.mark.anyio
     async def test_limit_capped_at_max(self, spillover_dir):
         """Requesting more than _MAX_LIMIT should be capped, not rejected."""
         result = await read_spillover(filename="get_nibrs_data_abc12345.json", limit=999_999)

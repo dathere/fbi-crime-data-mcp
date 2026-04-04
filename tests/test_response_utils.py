@@ -386,3 +386,28 @@ class TestFilterAgenciesEdgeCases:
     def test_non_dict_non_list_passthrough(self):
         raw = json.dumps("just a string")
         assert filter_agencies_by_name(raw, "test") == raw
+
+
+class TestAggregationInternalEdgeCases:
+    """Cover internal edge cases in _collapse_monthly, _is_monthly_dict, _apply_strategy."""
+
+    def test_unknown_strategy_raises(self):
+        import pytest
+
+        from fbi_crime_data_mcp.response_utils import _apply_strategy
+
+        with pytest.raises(ValueError, match="Unknown aggregation strategy"):
+            _apply_strategy([1, 2, 3], "unknown")
+
+    def test_is_monthly_dict_empty(self):
+        from fbi_crime_data_mcp.response_utils import _is_monthly_dict
+
+        assert _is_monthly_dict({}) is False
+
+    def test_collapse_monthly_non_matching_key_skipped(self):
+        from fbi_crime_data_mcp.response_utils import _collapse_monthly
+
+        # Mix of valid and invalid keys — invalid keys are skipped
+        result = _collapse_monthly({"01-2023": 10, "bad-key": 5, "02-2023": 20}, "sum")
+        assert "2023" in result
+        assert result["2023"] == 30  # bad-key is ignored

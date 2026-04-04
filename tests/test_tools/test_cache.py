@@ -481,3 +481,197 @@ class TestSaveAndLoadPersistedStats:
             "good": {"hits": 10, "misses": 5},
             "bad_values": {"hits": 0, "misses": 0},
         }
+
+
+class TestCacheOSErrorPaths:
+    """Cover OSError paths that require mocking (stat, unlink, rmtree)."""
+
+    async def test_stat_oserror_in_status_skips_entry(self, tmp_path, monkeypatch):
+        """OSError on entry stat during status is silently skipped."""
+        from unittest.mock import patch
+
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        col_dir = tmp_path / "S_col-abc"
+        col_dir.mkdir()
+        info = {"version": 1, "collection": "col", "directory": str(col_dir)}
+        (tmp_path / "S_col-abc-info.json").write_text(json.dumps(info))
+        entry = {"created_at": "2026-01-01T00:00:00+00:00", "expires_at": "2027-01-01T00:00:00+00:00"}
+        entry_file = col_dir / "entry.json"
+        entry_file.write_text(json.dumps(entry))
+
+        def failing_stat(*a, **kw):
+            raise OSError("stat failed")
+
+        with patch.object(type(entry_file), "stat", new=property(lambda self: failing_stat)):
+            # stat is called as method, need different approach
+            pass
+
+        # Simpler: make entry valid JSON but stat fails via monkeypatch
+        import pathlib
+
+        original_path_stat = pathlib.Path.stat
+
+        def patched_stat(self, *args, **kwargs):
+            if self.name == "entry.json":
+                raise OSError("stat failed")
+            return original_path_stat(self, *args, **kwargs)
+
+        with patch.object(pathlib.Path, "stat", patched_stat):
+            r = await manage_cache("status")
+            data = json.loads(r)
+            # Entry was read (JSON parsed) but stat failed, so it's skipped
+            assert data["total_entries"] == 0
+
+    async def test_safe_collection_dir_not_a_dir(self, tmp_path, monkeypatch):
+        """_safe_collection_dir returns None when path exists but is a file, not dir."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        # Create a file where a directory is expected
+        fake_dir = tmp_path / "S_col-abc"
+        fake_dir.write_text("not a directory")
+        info = {"version": 1, "collection": "col", "directory": str(fake_dir)}
+        (tmp_path / "S_col-abc-info.json").write_text(json.dumps(info))
+        r = await manage_cache("status")
+        data = json.loads(r)
+        assert data["total_entries"] == 0
+
+    async def test_unlink_oserror_in_clear(self, tmp_path, monkeypatch):
+        """OSError on entry unlink during clear continues gracefully."""
+        import pathlib
+        from unittest.mock import patch
+
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        monkeypatch.setattr(cache_mod, "_SPILLOVER_DIR", tmp_path / "no_spillover")
+        monkeypatch.setattr(cache_mod, "_STATS_FILE", tmp_path / "no_stats.json")
+        col_dir = tmp_path / "S_col-abc"
+        col_dir.mkdir()
+        info = {"version": 1, "collection": "col", "directory": str(col_dir)}
+        (tmp_path / "S_col-abc-info.json").write_text(json.dumps(info))
+        (col_dir / "entry.json").write_text(json.dumps({"data": 1}))
+
+        original_unlink = pathlib.Path.unlink
+
+        def patched_unlink(self, *args, **kwargs):
+            if self.name == "entry.json":
+                raise OSError("cannot unlink")
+            return original_unlink(self, *args, **kwargs)
+
+        with patch.object(pathlib.Path, "unlink", patched_unlink):
+            r = await manage_cache("clear")
+            data = json.loads(r)
+            assert data["removed"] == 0  # unlink failed
+
+    async def test_rmtree_oserror_in_clear(self, tmp_path, monkeypatch):
+        """OSError on rmtree during clear doesn't crash."""
+        from unittest.mock import patch
+
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        monkeypatch.setattr(cache_mod, "_SPILLOVER_DIR", tmp_path / "no_spillover")
+        monkeypatch.setattr(cache_mod, "_STATS_FILE", tmp_path / "no_stats.json")
+        col_dir = tmp_path / "S_col-abc"
+        col_dir.mkdir()
+        info = {"version": 1, "collection": "col", "directory": str(col_dir)}
+        (tmp_path / "S_col-abc-info.json").write_text(json.dumps(info))
+
+        with patch("fbi_crime_data_mcp.tools.cache.shutil.rmtree", side_effect=OSError("rmtree failed")):
+            r = await manage_cache("clear")
+            # Should complete without raising
+            data = json.loads(r)
+            assert data["removed"] == 0
+
+    async def test_spillover_rmtree_oserror(self, tmp_path, monkeypatch):
+        """OSError on spillover rmtree during clear doesn't crash."""
+        from unittest.mock import patch
+
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        monkeypatch.setattr(cache_mod, "_STATS_FILE", tmp_path / "no_stats.json")
+        spillover = tmp_path / "spillover"
+        spillover.mkdir()
+        (spillover / "file.json").write_text("data")
+        monkeypatch.setattr(cache_mod, "_SPILLOVER_DIR", spillover)
+
+        original_rmtree = __import__("shutil").rmtree
+
+        def patched_rmtree(path, *args, **kwargs):
+            if "spillover" in str(path):
+                raise OSError("rmtree failed")
+            return original_rmtree(path, *args, **kwargs)
+
+        with patch("fbi_crime_data_mcp.tools.cache.shutil.rmtree", side_effect=patched_rmtree):
+            r = await manage_cache("clear")
+            data = json.loads(r)
+            assert data["spillover_removed"] == 0
+
+    async def test_stats_unlink_oserror(self, tmp_path, monkeypatch):
+        """OSError on stats file unlink during clear doesn't crash."""
+        import pathlib
+        from unittest.mock import patch
+
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        monkeypatch.setattr(cache_mod, "_SPILLOVER_DIR", tmp_path / "no_spillover")
+        stats_file = tmp_path / "stats.json"
+        stats_file.write_text("{}")
+        monkeypatch.setattr(cache_mod, "_STATS_FILE", stats_file)
+
+        original_unlink = pathlib.Path.unlink
+
+        def patched_unlink(self, *args, **kwargs):
+            if self.name == "stats.json":
+                raise OSError("cannot unlink")
+            return original_unlink(self, *args, **kwargs)
+
+        with patch.object(pathlib.Path, "unlink", patched_unlink):
+            r = await manage_cache("clear")
+            # Should complete without raising
+            json.loads(r)
+
+    async def test_spillover_safe_size_oserror(self, tmp_path, monkeypatch):
+        """OSError in _safe_size returns 0 for that file."""
+        import pathlib
+        from unittest.mock import patch
+
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        spillover = tmp_path / "spillover"
+        spillover.mkdir()
+        (spillover / "file.json").write_text("data")
+        monkeypatch.setattr(cache_mod, "_SPILLOVER_DIR", spillover)
+
+        original_stat = pathlib.Path.stat
+
+        def patched_stat(self, *args, **kwargs):
+            if self.parent == spillover and self.suffix == ".json":
+                raise OSError("stat failed")
+            return original_stat(self, *args, **kwargs)
+
+        with patch.object(pathlib.Path, "stat", patched_stat):
+            r = await manage_cache("status")
+            data = json.loads(r)
+            assert data["spillover"]["files"] == 1
+            assert data["spillover"]["size_kb"] == 0
+
+    async def test_clear_invalid_collection_dir_skipped(self, tmp_path, monkeypatch):
+        """Clear skips info files with invalid collection directories."""
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+        monkeypatch.setattr(cache_mod, "_SPILLOVER_DIR", tmp_path / "no_spillover")
+        monkeypatch.setattr(cache_mod, "_STATS_FILE", tmp_path / "no_stats.json")
+        # Valid JSON but directory doesn't exist
+        info = {"version": 1, "collection": "col", "directory": str(tmp_path / "nonexistent")}
+        (tmp_path / "S_col-info.json").write_text(json.dumps(info))
+        r = await manage_cache("clear")
+        data = json.loads(r)
+        assert data["removed"] == 0
