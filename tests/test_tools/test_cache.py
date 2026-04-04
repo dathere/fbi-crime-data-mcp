@@ -2,18 +2,25 @@
 
 import json
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
 
 import pytest
 
+from fbi_crime_data_mcp.api_client import _load_persisted_stats, _save_stats
 from fbi_crime_data_mcp.tools.cache import manage_cache
 
 
 @pytest.fixture
 def fake_cache(tmp_path, monkeypatch):
     """Create a fake cache directory with test entries."""
+    import fbi_crime_data_mcp.api_client as api_client_mod
     import fbi_crime_data_mcp.tools.cache as cache_mod
 
+    stats_file = tmp_path / "stats.json"
+
     monkeypatch.setattr(cache_mod, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_mod, "_STATS_FILE", stats_file)
+    monkeypatch.setattr(api_client_mod, "STATS_FILE", stats_file)
 
     # Create a collection directory and info file
     col_dir = tmp_path / "S_tools_call-abc123"
@@ -61,8 +68,8 @@ class TestManageCache:
         assert data["active_entries"] == 1
         assert data["expired_entries"] == 1
         assert "tools/call" in data["collections"]
-        # session_hit_rate is present; no middleware in tests → zero totals
-        hr = data["session_hit_rate"]
+        # hit_rate is present; no middleware in tests → zero totals
+        hr = data["hit_rate"]
         assert hr["total"] == 0
         assert hr["hit_rate_pct"] is None
         # spillover stats present
@@ -169,6 +176,49 @@ class TestManageCache:
         assert data["spillover_removed"] == 1
         assert not spillover.exists()
 
+    async def test_status_includes_persisted_stats(self, fake_cache, monkeypatch):
+        """Persisted stats from previous sessions are merged into hit_rate."""
+        import fbi_crime_data_mcp.api_client as api_mod
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        stats_file = fake_cache / "stats.json"
+        stats_file.write_text(json.dumps({"call_tool": {"hits": 10, "misses": 5}}))
+        monkeypatch.setattr(cache_mod, "_STATS_FILE", stats_file)
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+
+        r = await manage_cache("status")
+        data = json.loads(r)
+        hr = data["hit_rate"]
+        assert hr["hits"] == 10
+        assert hr["misses"] == 5
+        assert hr["total"] == 15
+
+    async def test_clear_removes_stats_file(self, fake_cache, monkeypatch):
+        """Full clear removes the persisted stats file."""
+        import fbi_crime_data_mcp.api_client as api_client_mod
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        stats_file = fake_cache / "stats.json"
+        stats_file.write_text(json.dumps({"call_tool": {"hits": 10, "misses": 5}}))
+        monkeypatch.setattr(cache_mod, "_STATS_FILE", stats_file)
+        monkeypatch.setattr(api_client_mod, "STATS_FILE", stats_file)
+
+        await manage_cache("clear")
+        assert not stats_file.exists()
+
+    async def test_clear_expired_keeps_stats_file(self, fake_cache, monkeypatch):
+        """Clearing expired entries does not remove persisted stats."""
+        import fbi_crime_data_mcp.api_client as api_client_mod
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        stats_file = fake_cache / "stats.json"
+        stats_file.write_text(json.dumps({"call_tool": {"hits": 10, "misses": 5}}))
+        monkeypatch.setattr(cache_mod, "_STATS_FILE", stats_file)
+        monkeypatch.setattr(api_client_mod, "STATS_FILE", stats_file)
+
+        await manage_cache("clear_expired")
+        assert stats_file.exists()
+
     async def test_clear_expired_keeps_spillover(self, fake_cache, monkeypatch):
         """Clearing expired entries does not touch spillover."""
         import fbi_crime_data_mcp.tools.cache as cache_mod
@@ -181,3 +231,145 @@ class TestManageCache:
         await manage_cache("clear_expired")
         assert spillover.exists()
         assert (spillover / "tool_abc123.json").exists()
+
+
+class TestSaveAndLoadPersistedStats:
+    """Tests for _save_stats and _load_persisted_stats in api_client."""
+
+    def test_save_stats_creates_file(self, tmp_path, monkeypatch):
+        """_save_stats writes current session stats merged with persisted stats."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+
+        monkeypatch.setattr(
+            api_mod,
+            "_collect_stats",
+            lambda server: {"call_tool": {"hits": 5, "misses": 3}},
+        )
+
+        mock_server = MagicMock()
+        _save_stats(mock_server)
+
+        assert stats_file.exists()
+        data = json.loads(stats_file.read_text())
+        assert data["call_tool"]["hits"] == 5
+        assert data["call_tool"]["misses"] == 3
+
+    def test_save_stats_merges_with_existing(self, tmp_path, monkeypatch):
+        """_save_stats merges current stats with previously persisted stats."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        # Pre-populate with existing stats
+        stats_file.write_text(json.dumps({"call_tool": {"hits": 10, "misses": 5}}))
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+
+        # Mock _collect_stats to return current session stats
+        monkeypatch.setattr(
+            api_mod,
+            "_collect_stats",
+            lambda server: {"call_tool": {"hits": 3, "misses": 2}},
+        )
+
+        mock_server = MagicMock()
+        _save_stats(mock_server)
+
+        data = json.loads(stats_file.read_text())
+        assert data["call_tool"]["hits"] == 13  # 10 + 3
+        assert data["call_tool"]["misses"] == 7  # 5 + 2
+
+    def test_save_stats_merges_new_collection(self, tmp_path, monkeypatch):
+        """_save_stats adds new collections alongside existing ones."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        stats_file.write_text(json.dumps({"call_tool": {"hits": 10, "misses": 5}}))
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+
+        monkeypatch.setattr(
+            api_mod,
+            "_collect_stats",
+            lambda server: {"list_tools": {"hits": 1, "misses": 1}},
+        )
+
+        mock_server = MagicMock()
+        _save_stats(mock_server)
+
+        data = json.loads(stats_file.read_text())
+        assert data["call_tool"] == {"hits": 10, "misses": 5}
+        assert data["list_tools"] == {"hits": 1, "misses": 1}
+
+    def test_load_persisted_stats_missing_file(self, tmp_path, monkeypatch):
+        """_load_persisted_stats returns empty dict when file doesn't exist."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        monkeypatch.setattr(api_mod, "STATS_FILE", tmp_path / "nonexistent.json")
+        assert _load_persisted_stats() == {}
+
+    def test_load_persisted_stats_invalid_json(self, tmp_path, monkeypatch):
+        """_load_persisted_stats returns empty dict on invalid JSON."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        stats_file.write_text("not json")
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+        assert _load_persisted_stats() == {}
+
+    def test_load_persisted_stats_non_dict_counts(self, tmp_path, monkeypatch):
+        """Non-dict counts values are dropped during normalization."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        stats_file.write_text(json.dumps({"col": "not_a_dict"}))
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+        assert _load_persisted_stats() == {}
+
+    def test_load_persisted_stats_non_int_hits_misses(self, tmp_path, monkeypatch):
+        """Non-int hit/miss values are coerced to zero."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        stats_file.write_text(json.dumps({"col": {"hits": "bad", "misses": None}}))
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+        assert _load_persisted_stats() == {"col": {"hits": 0, "misses": 0}}
+
+    def test_load_persisted_stats_negative_values_clamped(self, tmp_path, monkeypatch):
+        """Negative hit/miss values are clamped to zero."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        stats_file.write_text(json.dumps({"col": {"hits": -3, "misses": -1}}))
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+        assert _load_persisted_stats() == {"col": {"hits": 0, "misses": 0}}
+
+    def test_load_persisted_stats_non_dict_root(self, tmp_path, monkeypatch):
+        """Non-dict root value returns empty dict."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        stats_file.write_text(json.dumps([1, 2, 3]))
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+        assert _load_persisted_stats() == {}
+
+    def test_load_persisted_stats_mixed_valid_invalid(self, tmp_path, monkeypatch):
+        """Valid entries are kept while invalid ones are dropped."""
+        import fbi_crime_data_mcp.api_client as api_mod
+
+        stats_file = tmp_path / "stats.json"
+        stats_file.write_text(
+            json.dumps(
+                {
+                    "good": {"hits": 10, "misses": 5},
+                    "bad_counts": "string",
+                    "bad_values": {"hits": [], "misses": {}},
+                }
+            )
+        )
+        monkeypatch.setattr(api_mod, "STATS_FILE", stats_file)
+        result = _load_persisted_stats()
+        assert result == {
+            "good": {"hits": 10, "misses": 5},
+            "bad_values": {"hits": 0, "misses": 0},
+        }
