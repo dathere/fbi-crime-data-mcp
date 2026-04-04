@@ -1,5 +1,8 @@
 # FBI Crime Data MCP Server
 
+[![CI](https://github.com/dathere/fbi-crime-data-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/dathere/fbi-crime-data-mcp/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/dathere/fbi-crime-data-mcp/graph/badge.svg)](https://codecov.io/gh/dathere/fbi-crime-data-mcp)
+
 An MCP (Model Context Protocol) server that provides access to the [FBI's Crime Data Explorer](https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/home) [API](https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/docApi).
 
 Query crime statistics, arrest data, hate crimes, NIBRS incidents, law enforcement employment, and more — directly from any MCP-compatible client.

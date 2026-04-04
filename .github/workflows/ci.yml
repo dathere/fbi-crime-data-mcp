@@ -32,4 +32,11 @@ jobs:
         run: uvx ruff check . && uvx ruff format --check .
 
       - name: Run tests with coverage
-        run: uv run --python ${{ matrix.python-version }} pytest --cov=fbi_crime_data_mcp --cov-report=term-missing
+        run: uv run --python ${{ matrix.python-version }} pytest --cov=fbi_crime_data_mcp --cov-report=term-missing --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.13'
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
