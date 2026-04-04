@@ -22,7 +22,7 @@ FBI_API_KEY=xxx uv run pytest -m integration        # integration tests (hits re
 - `src/fbi_crime_data_mcp/response_utils.py` — Post-processing for API responses: `process_crime_response()` trims verbose sections (tooltips, participated_population) and aggregates monthly `mm-yyyy` data into yearly totals; `filter_agencies_by_name()` does case-insensitive substring filtering on agency lists.
 - `src/fbi_crime_data_mcp/constants.py` — All validation enums: SRS offenses, NIBRS codes, arrest offenses, bias codes, LESDC chart types, states.
 - `src/fbi_crime_data_mcp/spillover.py` — `ResponseSpilloverMiddleware` saves oversized tool responses (>128K chars) to disk under `~/.cache/fbi-crime-data-mcp/spillover/`, returning a preview with the file path. Content-addressed filenames avoid duplicates.
-- `src/fbi_crime_data_mcp/validators.py` — Shared validation helpers used by tools: level, data_type, aggregate, state, ORI, date format (mm-yyyy / yyyy), and offense code validators.
+- `src/fbi_crime_data_mcp/validators.py` — Shared validation helpers used by tools: level, data_type, aggregate, state, ORI, date format (mm-yyyy / yyyy), year range, and offense code validators. Also provides `build_geo_path()` for constructing national/state/agency API paths and `effective_aggregate()` for aggregate passthrough logic.
 - `src/fbi_crime_data_mcp/tools/` — One module per tool, each registers via `@mcp.tool()` decorator on the shared `mcp` instance imported from `server.py`.
 
 ## Key Patterns
