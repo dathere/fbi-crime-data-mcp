@@ -5,7 +5,7 @@ from fastmcp import Context
 from ..api_client import AppContext
 from ..constants import NIBRS_OFFENSES, NIBRS_REGIONS, NIBRS_SIZE_GROUPS
 from ..server import mcp
-from ..validators import validate_offense, validate_state
+from ..validators import validate_offense, validate_state, validate_year_int
 
 
 @mcp.tool()
@@ -33,6 +33,9 @@ async def get_nibrs_estimation(
         size_group: Size group "1"-"8" (1=Cities 250K+, 6=Cities under 10K, 7=MSA Counties, 8=Non-MSA Counties). Required when level is "size".
     """
     err = validate_offense(offense, NIBRS_OFFENSES, "NIBRS offense code")
+    if err:
+        return err
+    err = validate_year_int(year)
     if err:
         return err
     if level not in ("national", "state", "region", "agency-type", "size"):

@@ -6,7 +6,7 @@ from ..api_client import AppContext
 from ..constants import SRS_OFFENSES
 from ..response_utils import process_crime_response
 from ..server import mcp
-from ..validators import validate_crime_data_params
+from ..validators import build_geo_path, validate_crime_data_params
 
 _offense_list = ", ".join(f"{k} ({v})" for k, v in SRS_OFFENSES.items())
 
@@ -50,12 +50,7 @@ async def get_summarized_crime_data(
     if err:
         return err
 
-    if level == "state":
-        path = f"/summarized/state/{state.upper()}/{offense}"
-    elif level == "agency":
-        path = f"/summarized/agency/{ori}/{offense}"
-    else:
-        path = f"/summarized/national/{offense}"
+    path = build_geo_path("/summarized", level, state=state, ori=ori, suffix=offense)
 
     app_ctx: AppContext = ctx.lifespan_context
     # SRS/summarized endpoint always returns both counts and rates together;

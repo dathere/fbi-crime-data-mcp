@@ -1,6 +1,8 @@
 """Tests for shared validation helpers."""
 
 from fbi_crime_data_mcp.validators import (
+    build_geo_path,
+    effective_aggregate,
     validate_aggregate,
     validate_crime_data_params,
     validate_data_type,
@@ -12,6 +14,7 @@ from fbi_crime_data_mcp.validators import (
     validate_ori_required,
     validate_state,
     validate_state_required,
+    validate_year_int,
     validate_yyyy,
 )
 
@@ -303,6 +306,30 @@ class TestValidateCrimeDataParams:
         )
 
 
+class TestValidateYearInt:
+    def test_valid(self):
+        assert validate_year_int(2020) is None
+        assert validate_year_int(1985) is None
+        assert validate_year_int(2030) is None
+
+    def test_too_low(self):
+        err = validate_year_int(1984)
+        assert "Invalid" in err
+        assert "1985" in err
+
+    def test_too_high(self):
+        import datetime
+
+        far_future = datetime.date.today().year + 6
+        err = validate_year_int(far_future)
+        assert "Invalid" in err
+        assert str(datetime.date.today().year + 5) in err
+
+    def test_includes_param_name(self):
+        err = validate_year_int(0, "start_year")
+        assert "start_year" in err
+
+
 class TestValidateDateOrderMmYyyy:
     def test_valid_order(self):
         assert validate_date_order_mm_yyyy("01-2020", "12-2020") is None
@@ -340,3 +367,36 @@ class TestValidateDateOrderYyyy:
     def test_invalid_format_skipped(self):
         assert validate_date_order_yyyy("bad", "2020") is None
         assert validate_date_order_yyyy("2020", "bad") is None
+
+
+class TestBuildGeoPath:
+    def test_national(self):
+        assert build_geo_path("/nibrs", "national") == "/nibrs/national"
+
+    def test_national_with_suffix(self):
+        assert build_geo_path("/nibrs", "national", suffix="09A") == "/nibrs/national/09A"
+
+    def test_state(self):
+        assert build_geo_path("/shr", "state", state="ca") == "/shr/state/CA"
+
+    def test_state_with_suffix(self):
+        assert build_geo_path("/arrest", "state", state="ny", suffix="11") == "/arrest/state/NY/11"
+
+    def test_agency(self):
+        assert build_geo_path("/shr", "agency", ori="X1") == "/shr/agency/X1"
+
+    def test_agency_with_suffix(self):
+        assert build_geo_path("/nibrs", "agency", ori="X1", suffix="09A") == "/nibrs/agency/X1/09A"
+
+    def test_no_suffix(self):
+        assert build_geo_path("/hate-crime", "national", suffix="") == "/hate-crime/national"
+
+
+class TestEffectiveAggregate:
+    def test_counts_returns_aggregate(self):
+        assert effective_aggregate("counts", "yearly") == "yearly"
+        assert effective_aggregate("counts", "monthly") == "monthly"
+
+    def test_totals_returns_monthly(self):
+        assert effective_aggregate("totals", "yearly") == "monthly"
+        assert effective_aggregate("totals", "bad") == "monthly"

@@ -5,7 +5,7 @@ from fastmcp import Context
 from ..api_client import AppContext
 from ..response_utils import process_crime_response
 from ..server import mcp
-from ..validators import validate_crime_data_params
+from ..validators import build_geo_path, effective_aggregate, validate_crime_data_params
 
 
 @mcp.tool()
@@ -42,13 +42,8 @@ async def get_expanded_homicide_data(
     if err:
         return err
 
-    if level == "state":
-        path = f"/shr/state/{state.upper()}"
-    elif level == "agency":
-        path = f"/shr/agency/{ori}"
-    else:
-        path = "/shr/national"
+    path = build_geo_path("/shr", level, state=state, ori=ori)
 
     app_ctx: AppContext = ctx.lifespan_context
     raw = await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})
-    return process_crime_response(raw, aggregate=aggregate if data_type == "counts" else "monthly")
+    return process_crime_response(raw, aggregate=effective_aggregate(data_type, aggregate))

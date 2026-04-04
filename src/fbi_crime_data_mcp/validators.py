@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import re
 
 from .constants import US_STATES
@@ -49,6 +50,14 @@ def validate_ori_required(level: str, ori: str | None) -> str | None:
     """Return error string if ori is required by level but missing, else None."""
     if level == "agency" and not ori:
         return "Parameter 'ori' is required when level is 'agency'."
+    return None
+
+
+def validate_year_int(year: int, param_name: str = "year") -> str | None:
+    """Return error string if year is outside a reasonable range, else None."""
+    max_year = datetime.date.today().year + 5
+    if not (1985 <= year <= max_year):
+        return f"Invalid {param_name} '{year}'. Must be between 1985 and {max_year}."
     return None
 
 
@@ -158,6 +167,41 @@ def validate_offense(code: str, valid_codes: dict[str, str], label: str, hint: s
             msg = f"{msg} {hint}"
         return msg
     return None
+
+
+def build_geo_path(
+    base: str,
+    level: str,
+    *,
+    state: str | None = None,
+    ori: str | None = None,
+    suffix: str = "",
+) -> str:
+    """Build API path for national/state/agency geographic levels.
+
+    ``state`` is uppercased automatically.  ``suffix`` (e.g. offense code) is
+    appended after the level segment.
+    """
+    if level == "state":
+        if state is None:
+            raise ValueError("state is required when level is 'state'")
+        path = f"{base}/state/{state.upper()}"
+    elif level == "agency":
+        if ori is None:
+            raise ValueError("ori is required when level is 'agency'")
+        path = f"{base}/agency/{ori}"
+    elif level == "national":
+        path = f"{base}/national"
+    else:
+        raise ValueError(f"level must be one of 'national', 'state', or 'agency', got {level!r}")
+    if suffix:
+        path += f"/{suffix}"
+    return path
+
+
+def effective_aggregate(data_type: str, aggregate: str) -> str:
+    """Return *aggregate* for counts data, or ``'monthly'`` (no-op) for totals."""
+    return aggregate if data_type == "counts" else "monthly"
 
 
 def _join_options(options: tuple[str, ...]) -> str:

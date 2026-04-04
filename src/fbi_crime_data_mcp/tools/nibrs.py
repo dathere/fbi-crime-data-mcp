@@ -6,7 +6,7 @@ from ..api_client import AppContext
 from ..constants import NIBRS_OFFENSES
 from ..response_utils import process_crime_response
 from ..server import mcp
-from ..validators import validate_crime_data_params
+from ..validators import build_geo_path, effective_aggregate, validate_crime_data_params
 
 
 @mcp.tool()
@@ -49,13 +49,8 @@ async def get_nibrs_data(
     if err:
         return err
 
-    if level == "state":
-        path = f"/nibrs/state/{state.upper()}/{offense}"
-    elif level == "agency":
-        path = f"/nibrs/agency/{ori}/{offense}"
-    else:
-        path = f"/nibrs/national/{offense}"
+    path = build_geo_path("/nibrs", level, state=state, ori=ori, suffix=offense)
 
     app_ctx: AppContext = ctx.lifespan_context
     raw = await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})
-    return process_crime_response(raw, aggregate=aggregate if data_type == "counts" else "monthly")
+    return process_crime_response(raw, aggregate=effective_aggregate(data_type, aggregate))
