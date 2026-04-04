@@ -61,6 +61,7 @@ _cache_store = FileTreeStore(
 
 _TTL_90_DAYS = 90 * 24 * 3600
 _TTL_30_DAYS = 30 * 24 * 3600
+_TTL_1_DAY = 24 * 3600
 
 # Long TTL (90 days) — summaries, trends, reference data (rarely changes)
 mcp.add_middleware(
@@ -95,6 +96,18 @@ mcp.add_middleware(
                 "get_leoka_data",
                 "get_lesdc_data",
                 "get_use_of_force_data",
+            ],
+        ),
+    )
+)
+
+# Daily TTL (1 day) — homepage freshness data (refresh dates change frequently)
+mcp.add_middleware(
+    ResponseCachingMiddleware(
+        cache_storage=_cache_store,
+        call_tool_settings=CallToolSettings(
+            ttl=_TTL_1_DAY,
+            included_tools=[
                 "get_cde_homepage_summary",
             ],
         ),
