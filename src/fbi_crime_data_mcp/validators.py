@@ -80,7 +80,13 @@ def validate_crime_data_params(
     offense_label: str = "offense code",
     offense_hint: str = "",
 ) -> str | None:
-    """Validate common crime data tool parameters (geo level, dates, data type, aggregate, offense).
+    """Validate common crime data tool parameters.
+
+    Always validates geo level and date parameters, along with any required
+    geographic identifiers for the selected level. Validates ``data_type`` when
+    it is provided. Validates ``aggregate`` only when both ``data_type`` and
+    ``aggregate`` are provided. Validates ``offense`` only when both
+    ``offense`` and ``offense_codes`` are provided.
 
     Returns an error string on the first validation failure, or None if all pass.
     """

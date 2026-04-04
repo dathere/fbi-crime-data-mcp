@@ -25,7 +25,7 @@ async def get_summarized_crime_data(
     """Get summarized (SRS) crime data including offense rates, actuals, clearances, and population coverage.
 
     Args:
-        offense: SRS offense code (e.g., "aggravated-assault", "burglary", "larceny", "motor-vehicle-theft", "homicide", "rape", "robbery", "arson", "property-crime", "violent-crime"). Use get_reference_data for full list.
+        offense: SRS offense code (e.g., "V" for Violent Crime, "P" for Property Crime, "HOM", "RPE", "ROB", "ASS", "BUR", "LAR", "MVT", "ARS"). Use get_reference_data for full list.
         level: Geographic level — "national", "state", or "agency"
         from_date: Start date in mm-yyyy format (e.g., "01-2020")
         to_date: End date in mm-yyyy format (e.g., "12-2022")

@@ -26,7 +26,7 @@ async def get_expanded_property_data(
     """Get expanded property crime data with details on stolen/recovered property values.
 
     Args:
-        offense: Property offense code (e.g., "burglary", "larceny", "motor-vehicle-theft", "arson"). Use get_reference_data for full list.
+        offense: Property offense code — "NB" (Burglary), "NL" (Larceny), "NMVT" (Motor Vehicle Theft), "NROB" (Robbery).
         level: Geographic level — "national", "state", or "agency"
         data_type: "counts" for time series or "totals" for property value breakdowns
         from_date: Start date in mm-yyyy format (e.g., "01-2020")
