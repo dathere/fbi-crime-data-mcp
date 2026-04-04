@@ -31,6 +31,9 @@ async def read_spillover(
     if filename == "list":
         return _list_spillover_files()
 
+    if not filename.endswith(".json"):
+        return 'Invalid filename. Spillover files must end with ".json", or use "list".'
+
     if offset < 0:
         return "Invalid offset. Must be >= 0."
     if limit <= 0:
@@ -50,6 +53,8 @@ async def read_spillover(
 
     try:
         text = filepath.read_text(encoding="utf-8")
+    except UnicodeDecodeError as e:
+        return f"Error decoding file as UTF-8: {e}"
     except OSError as e:
         return f"Error reading file: {e}"
 
