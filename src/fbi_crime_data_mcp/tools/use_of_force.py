@@ -4,7 +4,7 @@ from fastmcp import Context
 
 from ..api_client import AppContext
 from ..server import mcp
-from ..validators import validate_state
+from ..validators import validate_state, validate_year_int
 
 
 @mcp.tool()
@@ -35,6 +35,9 @@ async def get_use_of_force_data(
     if report_type == "summary":
         if year is None or not location:
             return "Both 'year' and 'location' are required for summary type."
+        err = validate_year_int(year)
+        if err:
+            return err
         if location != "national":
             err = validate_state(location)
             if err:
@@ -45,6 +48,9 @@ async def get_use_of_force_data(
     elif report_type == "questions":
         if not group or year is None or quarter is None:
             return "Parameters 'group', 'year', and 'quarter' are required for questions type."
+        err = validate_year_int(year)
+        if err:
+            return err
         if not (1 <= quarter <= 4):
             return "Parameter 'quarter' must be between 1 and 4."
         return await app_ctx.api_get(f"/uof/questions/{group}/{year}/{quarter}")

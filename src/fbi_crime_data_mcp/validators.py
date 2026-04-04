@@ -52,6 +52,13 @@ def validate_ori_required(level: str, ori: str | None) -> str | None:
     return None
 
 
+def validate_year_int(year: int, param_name: str = "year") -> str | None:
+    """Return error string if year is outside a reasonable range, else None."""
+    if not (1985 <= year <= 2030):
+        return f"Invalid {param_name} '{year}'. Must be between 1985 and 2030."
+    return None
+
+
 def validate_mm_yyyy(value: str, param_name: str) -> str | None:
     """Return error string if value doesn't match mm-yyyy format, else None."""
     if not _MM_YYYY_RE.match(value):
@@ -158,6 +165,35 @@ def validate_offense(code: str, valid_codes: dict[str, str], label: str, hint: s
             msg = f"{msg} {hint}"
         return msg
     return None
+
+
+def build_geo_path(
+    base: str,
+    level: str,
+    *,
+    state: str | None = None,
+    ori: str | None = None,
+    suffix: str = "",
+) -> str:
+    """Build API path for national/state/agency geographic levels.
+
+    ``state`` is uppercased automatically.  ``suffix`` (e.g. offense code) is
+    appended after the level segment.
+    """
+    if level == "state":
+        path = f"{base}/state/{state.upper()}"
+    elif level == "agency":
+        path = f"{base}/agency/{ori}"
+    else:
+        path = f"{base}/national"
+    if suffix:
+        path += f"/{suffix}"
+    return path
+
+
+def effective_aggregate(data_type: str, aggregate: str) -> str:
+    """Return *aggregate* for counts data, or ``'monthly'`` (no-op) for totals."""
+    return aggregate if data_type == "counts" else "monthly"
 
 
 def _join_options(options: tuple[str, ...]) -> str:

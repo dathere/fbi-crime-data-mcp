@@ -8,6 +8,10 @@ class TestNibrsEstimation:
         r = await get_nibrs_estimation("INVALID", "national", 2022, ctx=ctx)
         assert "Invalid NIBRS offense code" in r
 
+    async def test_invalid_year(self, ctx):
+        r = await get_nibrs_estimation("09A", "national", 1900, ctx=ctx)
+        assert "Invalid" in r and "year" in r
+
     async def test_invalid_level(self, ctx):
         r = await get_nibrs_estimation("09A", "city", 2022, ctx=ctx)
         assert "Invalid level" in r

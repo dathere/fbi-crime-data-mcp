@@ -6,7 +6,7 @@ from ..api_client import AppContext
 from ..constants import ARREST_OFFENSES
 from ..response_utils import process_crime_response
 from ..server import mcp
-from ..validators import validate_crime_data_params
+from ..validators import build_geo_path, effective_aggregate, validate_crime_data_params
 
 ARREST_CATEGORIES = {"male", "female", "race", "sex"}
 
@@ -56,16 +56,10 @@ async def get_arrest_data(
     if err:
         return err
 
-    if level == "state":
-        path = f"/arrest/state/{state.upper()}/{offense}"
-    elif level == "agency":
-        path = f"/arrest/agency/{ori}/{offense}"
-    else:
-        path = f"/arrest/national/{offense}"
-
+    path = build_geo_path("/arrest", level, state=state, ori=ori, suffix=offense)
     if category:
         path += f"/{category}"
 
     app_ctx: AppContext = ctx.lifespan_context
     raw = await app_ctx.api_get(path, {"type": data_type, "from": from_date, "to": to_date})
-    return process_crime_response(raw, aggregate=aggregate if data_type == "counts" else "monthly")
+    return process_crime_response(raw, aggregate=effective_aggregate(data_type, aggregate))

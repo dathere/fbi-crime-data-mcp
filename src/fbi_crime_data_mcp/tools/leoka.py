@@ -4,6 +4,7 @@ from fastmcp import Context
 
 from ..api_client import AppContext
 from ..server import mcp
+from ..validators import validate_year_int
 
 
 @mcp.tool()
@@ -22,6 +23,9 @@ async def get_leoka_data(
     """
     if report_type not in ("monthly", "ytd"):
         return "Invalid report_type. Must be 'monthly' or 'ytd'."
+    err = validate_year_int(year)
+    if err:
+        return err
     if report_type == "monthly" and month is None:
         return "Parameter 'month' (1-12) is required when report_type is 'monthly'."
     if report_type == "monthly" and month is not None and not (1 <= month <= 12):

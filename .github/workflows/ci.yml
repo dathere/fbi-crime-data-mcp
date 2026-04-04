@@ -31,5 +31,5 @@ jobs:
       - name: Lint
         run: uvx ruff check . && uvx ruff format --check .
 
-      - name: Run tests
-        run: uv run --python ${{ matrix.python-version }} pytest
+      - name: Run tests with coverage
+        run: uv run --python ${{ matrix.python-version }} pytest --cov=fbi_crime_data_mcp --cov-report=term-missing

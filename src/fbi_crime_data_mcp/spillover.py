@@ -62,7 +62,7 @@ class ResponseSpilloverMiddleware(Middleware):
 
         # Content-addressed filename avoids duplicates across repeated calls
         safe_name = re.sub(r"[^A-Za-z0-9_-]", "_", tool_name)
-        hash_hex = hashlib.sha256(full_text.encode()).hexdigest()[:8]
+        hash_hex = hashlib.sha256(full_text.encode()).hexdigest()[:16]
         filename = f"{safe_name}_{hash_hex}.json"
         spillover_path = SPILLOVER_DIR / filename
 
@@ -79,10 +79,7 @@ class ResponseSpilloverMiddleware(Middleware):
                 return False
 
         try:
-            if spillover_path.exists():
-                written = False
-            else:
-                written = await asyncio.to_thread(_write_spillover)
+            written = await asyncio.to_thread(_write_spillover)
             if written:
                 logger.info(
                     "Tool %r response spilled to %s (%d chars)",
