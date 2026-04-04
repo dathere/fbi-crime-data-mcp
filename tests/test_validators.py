@@ -4,6 +4,8 @@ from fbi_crime_data_mcp.validators import (
     validate_aggregate,
     validate_crime_data_params,
     validate_data_type,
+    validate_date_order_mm_yyyy,
+    validate_date_order_yyyy,
     validate_level,
     validate_mm_yyyy,
     validate_offense,
@@ -279,3 +281,62 @@ class TestValidateCrimeDataParams:
             )
             is None
         )
+
+    def test_from_date_after_to_date(self):
+        err = validate_crime_data_params(
+            level="national",
+            from_date="06-2022",
+            to_date="01-2020",
+        )
+        assert "after" in err
+        assert "06-2022" in err
+        assert "01-2020" in err
+
+    def test_same_date_is_valid(self):
+        assert (
+            validate_crime_data_params(
+                level="national",
+                from_date="06-2020",
+                to_date="06-2020",
+            )
+            is None
+        )
+
+
+class TestValidateDateOrderMmYyyy:
+    def test_valid_order(self):
+        assert validate_date_order_mm_yyyy("01-2020", "12-2020") is None
+
+    def test_same_date(self):
+        assert validate_date_order_mm_yyyy("06-2020", "06-2020") is None
+
+    def test_cross_year(self):
+        assert validate_date_order_mm_yyyy("12-2019", "01-2020") is None
+
+    def test_reversed(self):
+        err = validate_date_order_mm_yyyy("12-2022", "01-2020")
+        assert "after" in err
+
+    def test_same_year_reversed_month(self):
+        err = validate_date_order_mm_yyyy("06-2020", "01-2020")
+        assert "after" in err
+
+    def test_invalid_format_skipped(self):
+        assert validate_date_order_mm_yyyy("bad", "01-2020") is None
+        assert validate_date_order_mm_yyyy("01-2020", "bad") is None
+
+
+class TestValidateDateOrderYyyy:
+    def test_valid_order(self):
+        assert validate_date_order_yyyy("2015", "2022") is None
+
+    def test_same_year(self):
+        assert validate_date_order_yyyy("2020", "2020") is None
+
+    def test_reversed(self):
+        err = validate_date_order_yyyy("2022", "2015")
+        assert "after" in err
+
+    def test_invalid_format_skipped(self):
+        assert validate_date_order_yyyy("bad", "2020") is None
+        assert validate_date_order_yyyy("2020", "bad") is None

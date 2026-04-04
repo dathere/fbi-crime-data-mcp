@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 from collections import deque
@@ -16,6 +17,8 @@ from fastmcp import FastMCP
 from fastmcp.server.middleware.caching import ResponseCachingMiddleware
 
 from .constants import BASE_URL, CACHE_COLLECTION_NAMES, STATS_FILE
+
+logger = logging.getLogger(__name__)
 
 
 class RateLimiter:
@@ -138,7 +141,7 @@ def _save_stats(server: FastMCP) -> None:
         STATS_FILE.parent.mkdir(parents=True, exist_ok=True)
         STATS_FILE.write_text(json.dumps(persisted, indent=2))
     except OSError:
-        pass
+        logger.warning("Failed to save cache stats to %s", STATS_FILE, exc_info=True)
 
 
 def _load_persisted_stats() -> dict[str, dict[str, int]]:

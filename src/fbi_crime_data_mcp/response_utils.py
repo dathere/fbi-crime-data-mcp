@@ -208,6 +208,9 @@ def _apply_strategy(values: list[float | int | None], strategy: str) -> float | 
         total = sum(non_null)
         return total if any(isinstance(v, float) for v in non_null) else int(total)
     if strategy == "avg":
+        # Unweighted average — acceptable when population is roughly constant
+        # within a year. A population-weighted average would be more precise but
+        # requires cross-referencing population data from a sibling section.
         return round(sum(non_null) / len(non_null), 2)
     if strategy == "last":
         return non_null[-1]

@@ -5,6 +5,7 @@ from fastmcp import Context
 from ..api_client import AppContext
 from ..server import mcp
 from ..validators import (
+    validate_date_order_yyyy,
     validate_level,
     validate_state,
     validate_state_required,
@@ -39,8 +40,6 @@ async def get_police_employment(
         return err
 
     if level == "agency":
-        if not state and not ori:
-            return "Parameters 'state' and 'ori' are required when level is 'agency'."
         if not state:
             return "Parameter 'state' is required when level is 'agency'."
         if not ori:
@@ -55,6 +54,7 @@ async def get_police_employment(
         validate_state(state),
         validate_yyyy(from_year, "from_year"),
         validate_yyyy(to_year, "to_year"),
+        validate_date_order_yyyy(from_year, to_year),
     ):
         if err:
             return err

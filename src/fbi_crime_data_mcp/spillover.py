@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import re
@@ -67,10 +68,22 @@ class ResponseSpilloverMiddleware(Middleware):
 
         preview = full_text[: self.preview_chars]
 
+        def _write_spillover() -> bool:
+            """Atomically create and write the spillover file in a worker thread."""
+            SPILLOVER_DIR.mkdir(parents=True, exist_ok=True)
+            try:
+                with spillover_path.open("x", encoding="utf-8") as spillover_file:
+                    spillover_file.write(full_text)
+                return True
+            except FileExistsError:
+                return False
+
         try:
-            if not spillover_path.exists():
-                SPILLOVER_DIR.mkdir(parents=True, exist_ok=True)
-                spillover_path.write_text(full_text, encoding="utf-8")
+            if spillover_path.exists():
+                written = False
+            else:
+                written = await asyncio.to_thread(_write_spillover)
+            if written:
                 logger.info(
                     "Tool %r response spilled to %s (%d chars)",
                     tool_name,
