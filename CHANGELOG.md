@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.5.1] - 2026-09-07
 
 ### Fixed
 - `_partial_years` coverage is now tracked per series rather than unioned across the whole response, so a complete `population` series can no longer mask an incomplete `rates` or `actuals` series (found by roborev review of e659376). A year is flagged when any series has fewer than 12 months; `months_covered` is the smallest coverage among the short series, new `series_incomplete`/`series_total` counts are always present, and `incomplete_series` names the short ones when they are a strict subset
