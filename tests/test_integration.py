@@ -50,13 +50,11 @@ MONTH_RE = re.compile(r"^\d{2}-\d{4}$")
 _ERROR_PREFIXES = ("Error:", "Invalid", "Parameter", "Both ", "Rate limit")
 
 # Lower-cased substrings marking a quota rejection rather than a code defect.
-# Covers api_client's HTTP 429 branch, the in-process sliding-window
-# RateLimiter, and api.data.gov's 403/OVER_RATE_LIMIT body, which falls
-# through to the generic "Unexpected HTTP" branch.
+# "rate limit exceeded" covers api_client's HTTP 429 and 403/OVER_RATE_LIMIT
+# branches; "rate limit reached" is the in-process sliding-window RateLimiter.
 _QUOTA_MARKERS = (
     "rate limit exceeded",
     "rate limit reached",
-    "over_rate_limit",
 )
 
 
@@ -92,9 +90,8 @@ def unwrap(response: str) -> Any:
     assert isinstance(response, str), f"tool returned {type(response).__name__}, expected str"
 
     if response.startswith(_ERROR_PREFIXES):
-        # Quota rejections are detected by content, not status code:
-        # api.data.gov has used both 429 and 403/OVER_RATE_LIMIT for
-        # over-quota, and only the former maps to a dedicated api_get branch.
+        # Quota rejections are detected by content: api_get maps both HTTP 429
+        # and 403/OVER_RATE_LIMIT to the same "rate limit exceeded" wording.
         lowered = response.lower()
         if any(marker in lowered for marker in _QUOTA_MARKERS):
             pytest.skip(f"API quota exhausted: {response[:200]}")

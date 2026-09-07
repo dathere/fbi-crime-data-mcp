@@ -20,6 +20,51 @@ from .constants import BASE_URL, CACHE_COLLECTION_NAMES, STATS_FILE
 
 logger = logging.getLogger(__name__)
 
+# api.data.gov error codes that mean the key itself is the problem, as opposed
+# to quota (OVER_RATE_LIMIT) or a routing issue. The gateway returns all of
+# these as HTTP 403 with a body of {"error": {"code": ..., "message": ...}}.
+_API_KEY_ERROR_CODES = frozenset(
+    {
+        "API_KEY_MISSING",
+        "API_KEY_INVALID",
+        "API_KEY_DISABLED",
+        "API_KEY_UNAUTHORIZED",
+        "API_KEY_UNVERIFIED",
+    }
+)
+
+
+def _parse_api_data_gov_error(response: httpx.Response) -> tuple[str, str]:
+    """Return ``(code, message)`` from an api.data.gov error body, or empty strings."""
+    try:
+        body = response.json()
+    except Exception:
+        return "", ""
+    err = body.get("error") if isinstance(body, dict) else None
+    if not isinstance(err, dict):
+        return "", ""
+    return str(err.get("code") or ""), str(err.get("message") or "")
+
+
+def _format_forbidden(response: httpx.Response) -> str:
+    """Turn an HTTP 403 from the api.data.gov gateway into an actionable message.
+
+    The gateway uses 403 for three unrelated situations: a bad or missing key,
+    quota exhaustion (it has sent OVER_RATE_LIMIT as both 429 and 403), and
+    anything else it refuses. Each needs a different next step from the caller.
+    """
+    code, message = _parse_api_data_gov_error(response)
+    if code == "OVER_RATE_LIMIT":
+        return "Error: FBI API rate limit exceeded (HTTP 403 OVER_RATE_LIMIT). Wait a few minutes before retrying."
+    if code in _API_KEY_ERROR_CODES:
+        return (
+            f"Error: FBI API rejected the API key (HTTP 403 {code}): {message} "
+            "Check the FBI_API_KEY environment variable."
+        )
+    detail = message or response.text[:500]
+    code_part = f" {code}" if code else ""
+    return f"Error: FBI API returned HTTP 403{code_part}: {detail}"
+
 
 class RateLimiter:
     """Sliding-window rate limiter (1000 requests per hour by default)."""
@@ -83,6 +128,8 @@ class AppContext:
 
         if response.status_code == 429:
             return "Error: FBI API rate limit exceeded (HTTP 429). Wait a few minutes before retrying."
+        if response.status_code == 403:
+            return _format_forbidden(response)
         if response.status_code == 400:
             try:
                 body = response.json()
