@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+- API key is now sent in the `X-Api-Key` request header instead of the `API_KEY` query parameter, so it never appears in request URLs (httpx debug logs, proxies, or error messages that echo the URL)
+
 ### Fixed
 - Transient API errors (timeouts, network failures, HTTP 5xx/429, in-process rate-limit messages) are no longer cached. Tools return these as plain strings, and `ResponseCachingMiddleware` stored them for the full 30/90-day TTL, so a single blip was replayed for that argument set until the cache was cleared. New `ErrorAwareCachingMiddleware` (`caching.py`) skips writing results that start with `Error:` or `Rate limit reached`
 - CI lint step now uses the `ruff` pinned in the `dev` dependency group via `uv run` instead of an unpinned `uvx ruff`, so local and CI lint results match
 
 ### Added
+- Yearly aggregation now adds a top-level `_partial_years` marker (note, months covered, from/to) whenever a year has fewer than 12 months of data, so a partial-year sum or rate average is never mistaken for an annual figure. Tool docstrings for the six aggregating tools mention the marker
+- README: documented that cached responses hold the spillover preview, so the cache and spillover directory should be cleared together via `manage_cache`
 - `ruff` added to the `dev` dependency group
 - `tests/test_caching.py` covering cache hit/miss, error bypass, error-then-success recovery, and statistics for `ErrorAwareCachingMiddleware`
 

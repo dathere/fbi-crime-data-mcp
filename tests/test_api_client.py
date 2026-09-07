@@ -110,7 +110,7 @@ async def mock_client():
     with respx.mock(base_url="https://api.usa.gov/crime/fbi/cde") as mock:
         client = httpx.AsyncClient(
             base_url="https://api.usa.gov/crime/fbi/cde",
-            params={"API_KEY": "test"},
+            headers={"X-Api-Key": "test"},
             timeout=5.0,
         )
         yield client, mock
@@ -345,5 +345,9 @@ class TestAppLifespan:
         async with app_lifespan(mock_server) as ctx:
             assert isinstance(ctx, AppContext)
             assert ctx.client is not None
+            # Key is sent as a header, never as a URL query parameter
+            assert ctx.client.headers["X-Api-Key"] == "test-key"
+            assert "API_KEY" not in ctx.client.params
+            assert "test-key" not in str(ctx.client.build_request("GET", "/x").url)
 
         assert len(save_calls) == 1

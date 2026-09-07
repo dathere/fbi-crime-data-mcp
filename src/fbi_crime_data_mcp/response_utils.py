@@ -12,6 +12,23 @@ from .validators import MM_YYYY_RE as _MM_YYYY_RE
 _RATE_KEYS = {"rates"}
 _POPULATION_KEYS = {"population"}
 
+# Top-level key added to yearly-aggregated responses when any year has fewer
+# than 12 months of data (requested range not Jan-Dec aligned, or the FBI has
+# not published the remaining months). Underscore-prefixed like the synthetic
+# ``_pagination_group`` field so it is recognisable as ours, not the API's.
+PARTIAL_YEARS_KEY = "_partial_years"
+_PARTIAL_YEARS_NOTE = (
+    "Yearly values for these years are computed from the listed months only: counts are sums and "
+    "rates are unweighted averages of the months available, so they are NOT full-year figures. "
+    "Coverage may be short because the requested date range does not span January to December, "
+    "or because the FBI has not yet published the remaining months. Use a January-to-December "
+    "range for complete annual figures, or pass aggregate='monthly' to see the underlying months."
+)
+
+# Per-year set of mm strings seen while collapsing monthly dicts. Threaded
+# through the aggregation walk so the coverage report reflects every section.
+_Coverage = dict[str, set[str]]
+
 
 def process_crime_response(raw_json: str, aggregate: str = "yearly") -> str:
     """Post-process a crime data API response.
@@ -35,7 +52,12 @@ def process_crime_response(raw_json: str, aggregate: str = "yearly") -> str:
     data = _trim_response(data)
 
     if aggregate == "yearly":
-        data = _aggregate_yearly(data)
+        coverage: _Coverage = defaultdict(set)
+        data = _aggregate_yearly(data, coverage)
+        partial = _partial_years(coverage)
+        if partial:
+            # Put the marker first so a reader (human or model) sees it before the numbers.
+            data = {PARTIAL_YEARS_KEY: partial, **data}
 
     return json.dumps(data, indent=2)
 
@@ -137,15 +159,34 @@ def _trim_response(data: dict) -> dict:
     return data
 
 
-def _aggregate_yearly(data: dict) -> dict:
-    """Aggregate monthly mm-yyyy keyed time series into yearly values."""
+def _aggregate_yearly(data: dict, coverage: _Coverage | None = None) -> dict:
+    """Aggregate monthly mm-yyyy keyed time series into yearly values.
+
+    If *coverage* is given, every ``mm`` seen for each year is recorded in it.
+    """
     result = {}
     for key, value in data.items():
         if not isinstance(value, dict):
             result[key] = value
             continue
-        result[key] = _aggregate_section(value, _strategy_for_key(key))
+        result[key] = _aggregate_section(value, _strategy_for_key(key), coverage)
     return result
+
+
+def _partial_years(coverage: _Coverage) -> dict | None:
+    """Build the ``_partial_years`` marker, or None if every year has 12 months."""
+    years = {}
+    for year in sorted(coverage):
+        months = sorted(coverage[year])
+        if len(months) < 12:
+            years[year] = {
+                "months_covered": len(months),
+                "from": f"{months[0]}-{year}",
+                "to": f"{months[-1]}-{year}",
+            }
+    if not years:
+        return None
+    return {"note": _PARTIAL_YEARS_NOTE, "years": years}
 
 
 def _strategy_for_key(key: str) -> str:
@@ -158,7 +199,7 @@ def _strategy_for_key(key: str) -> str:
     return "sum"
 
 
-def _aggregate_section(section: dict, parent_strategy: str) -> dict:
+def _aggregate_section(section: dict, parent_strategy: str, coverage: _Coverage | None = None) -> dict:
     """Recursively walk a section and aggregate any mm-yyyy keyed dicts found.
 
     Strategy-inheritance invariant: while *parent_strategy* is ``"sum"`` (the
@@ -169,7 +210,7 @@ def _aggregate_section(section: dict, parent_strategy: str) -> dict:
     so nested rate breakdowns stay averaged rather than reverting to summing.
     """
     if _is_monthly_dict(section):
-        return _collapse_monthly(section, parent_strategy)
+        return _collapse_monthly(section, parent_strategy, coverage)
 
     result = {}
     for key, value in section.items():
@@ -177,7 +218,7 @@ def _aggregate_section(section: dict, parent_strategy: str) -> dict:
             result[key] = value
             continue
         strategy = _strategy_for_key(key) if parent_strategy == "sum" else parent_strategy
-        result[key] = _aggregate_section(value, strategy)
+        result[key] = _aggregate_section(value, strategy, coverage)
     return result
 
 
@@ -188,15 +229,21 @@ def _is_monthly_dict(d: dict) -> bool:
     return all(_MM_YYYY_RE.match(k) for k in d)
 
 
-def _collapse_monthly(monthly: dict, strategy: str) -> dict:
-    """Collapse mm-yyyy keyed values into yyyy keyed values."""
+def _collapse_monthly(monthly: dict, strategy: str, coverage: _Coverage | None = None) -> dict:
+    """Collapse mm-yyyy keyed values into yyyy keyed values.
+
+    Records each ``mm`` seen per year in *coverage* (if given) so the caller
+    can flag years with fewer than 12 months of data.
+    """
     years: dict[str, list[tuple[int, float | int | None]]] = defaultdict(list)
     for key, value in monthly.items():
         m = _MM_YYYY_RE.match(key)
         if not m:
             continue
-        month_num, year = int(m.group(1)), m.group(2)
-        years[year].append((month_num, value))
+        month_str, year = m.group(1), m.group(2)
+        years[year].append((int(month_str), value))
+        if coverage is not None:
+            coverage[year].add(month_str)
 
     result = {}
     for year in sorted(years):

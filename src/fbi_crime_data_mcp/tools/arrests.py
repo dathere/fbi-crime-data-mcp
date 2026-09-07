@@ -35,7 +35,7 @@ async def get_arrest_data(
         state: Two-letter state abbreviation (required when level is "state")
         ori: Agency ORI code (required when level is "agency")
         category: Optional demographic breakdown — "male", "female", "race", or "sex"
-        aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity). Only applies when data_type is "counts".
+        aggregate: Aggregation level — "yearly" (default, sums monthly into yearly) or "monthly" (monthly granularity). Only applies when data_type is "counts". Years with fewer than 12 months of data are flagged in a top-level "_partial_years" key (rates are unweighted averages of the available months).
     """
     if category and category not in ARREST_CATEGORIES:
         return f"Invalid category '{category}'. Must be one of: male, female, race, sex."
