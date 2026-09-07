@@ -8,10 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- Transient API errors (timeouts, network failures, HTTP 5xx/429, in-process rate-limit messages) are no longer cached. Tools return these as plain strings, and `ResponseCachingMiddleware` stored them for the full 30/90-day TTL, so a single blip was replayed for that argument set until the cache was cleared. New `ErrorAwareCachingMiddleware` (`caching.py`) skips writing results that start with `Error:` or `Rate limit reached`
 - CI lint step now uses the `ruff` pinned in the `dev` dependency group via `uv run` instead of an unpinned `uvx ruff`, so local and CI lint results match
 
 ### Added
 - `ruff` added to the `dev` dependency group
+- `tests/test_caching.py` covering cache hit/miss, error bypass, error-then-success recovery, and statistics for `ErrorAwareCachingMiddleware`
 
 ## [0.4.0] - 2026-05-31
 

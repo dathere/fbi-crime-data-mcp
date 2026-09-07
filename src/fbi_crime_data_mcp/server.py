@@ -1,10 +1,7 @@
 """FBI Crime Data Explorer MCP Server."""
 
 from fastmcp import FastMCP
-from fastmcp.server.middleware.caching import (
-    CallToolSettings,
-    ResponseCachingMiddleware,
-)
+from fastmcp.server.middleware.caching import CallToolSettings
 from key_value.aio.stores.filetree import (
     FileTreeStore,
     FileTreeV1CollectionSanitizationStrategy,
@@ -12,6 +9,7 @@ from key_value.aio.stores.filetree import (
 )
 
 from .api_client import app_lifespan
+from .caching import ErrorAwareCachingMiddleware
 from .constants import CACHE_DIR
 from .spillover import ResponseSpilloverMiddleware
 
@@ -50,6 +48,8 @@ from .tools import (  # noqa: E402, F401
 )
 
 # --- Response caching with tiered TTLs ---
+# ErrorAwareCachingMiddleware skips caching transient error strings (timeouts,
+# HTTP 5xx/429, rate-limit messages) so a blip is never replayed for the TTL.
 _cache_dir = CACHE_DIR
 _cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -65,7 +65,7 @@ _TTL_1_DAY = 24 * 3600
 
 # Long TTL (90 days) — summaries, trends, reference data (rarely changes)
 mcp.add_middleware(
-    ResponseCachingMiddleware(
+    ErrorAwareCachingMiddleware(
         cache_storage=_cache_store,
         call_tool_settings=CallToolSettings(
             ttl=_TTL_90_DAYS,
@@ -81,7 +81,7 @@ mcp.add_middleware(
 
 # Short TTL (30 days) — agency lookups, granular incident data
 mcp.add_middleware(
-    ResponseCachingMiddleware(
+    ErrorAwareCachingMiddleware(
         cache_storage=_cache_store,
         call_tool_settings=CallToolSettings(
             ttl=_TTL_30_DAYS,
@@ -103,7 +103,7 @@ mcp.add_middleware(
 
 # Daily TTL (1 day) — homepage freshness data (refresh dates change frequently)
 mcp.add_middleware(
-    ResponseCachingMiddleware(
+    ErrorAwareCachingMiddleware(
         cache_storage=_cache_store,
         call_tool_settings=CallToolSettings(
             ttl=_TTL_1_DAY,
