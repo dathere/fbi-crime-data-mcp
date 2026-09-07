@@ -3,6 +3,7 @@
 import json
 
 from fbi_crime_data_mcp.response_utils import (
+    PARTIAL_YEARS_KEY,
     filter_agencies_by_name,
     paginate_response,
     process_crime_response,
@@ -411,3 +412,64 @@ class TestAggregationInternalEdgeCases:
         result = _collapse_monthly({"01-2023": 10, "bad-key": 5, "02-2023": 20}, "sum")
         assert "2023" in result
         assert result["2023"] == 30  # bad-key is ignored
+
+
+class TestPartialYearsMarker:
+    """Yearly aggregation flags years with fewer than 12 months of data."""
+
+    @staticmethod
+    def _series(months: dict) -> str:
+        return json.dumps({"offenses": {"actuals": {"Series": months}}})
+
+    def test_full_years_have_no_marker(self):
+        months = {f"{m:02d}-2024": 1 for m in range(1, 13)}
+        result = json.loads(process_crime_response(self._series(months), aggregate="yearly"))
+        assert PARTIAL_YEARS_KEY not in result
+
+    def test_partial_year_is_flagged_with_coverage(self):
+        months = {f"{m:02d}-2024": 1 for m in range(1, 13)}
+        months.update({"01-2025": 1, "02-2025": 1, "03-2025": 1})
+        result = json.loads(process_crime_response(self._series(months), aggregate="yearly"))
+
+        marker = result[PARTIAL_YEARS_KEY]
+        assert "note" in marker and "unweighted" in marker["note"]
+        assert marker["years"] == {"2025": {"months_covered": 3, "from": "01-2025", "to": "03-2025"}}
+        # The yearly values themselves are unchanged
+        assert result["offenses"]["actuals"]["Series"] == {"2024": 12, "2025": 3}
+
+    def test_marker_comes_first(self):
+        result = json.loads(process_crime_response(self._series({"06-2024": 1}), aggregate="yearly"))
+        assert next(iter(result)) == PARTIAL_YEARS_KEY
+
+    def test_non_contiguous_months_report_from_to(self):
+        result = json.loads(process_crime_response(self._series({"02-2024": 1, "11-2024": 1}), aggregate="yearly"))
+        assert result[PARTIAL_YEARS_KEY]["years"]["2024"] == {
+            "months_covered": 2,
+            "from": "02-2024",
+            "to": "11-2024",
+        }
+
+    def test_coverage_is_union_across_sections(self):
+        # rates only has Jan; population has all 12 → year is complete overall
+        data = {
+            "offenses": {"rates": {"S": {"01-2024": 1.0}}},
+            "populations": {"population": {"S": {f"{m:02d}-2024": 100 for m in range(1, 13)}}},
+        }
+        result = json.loads(process_crime_response(json.dumps(data), aggregate="yearly"))
+        assert PARTIAL_YEARS_KEY not in result
+
+    def test_null_months_still_count_as_covered(self):
+        # A published-but-null month is coverage; only absent keys make a year partial
+        months = {f"{m:02d}-2024": (None if m % 2 else 1) for m in range(1, 13)}
+        result = json.loads(process_crime_response(self._series(months), aggregate="yearly"))
+        assert PARTIAL_YEARS_KEY not in result
+
+    def test_monthly_aggregate_adds_no_marker(self):
+        result = json.loads(process_crime_response(self._series({"06-2024": 1}), aggregate="monthly"))
+        assert PARTIAL_YEARS_KEY not in result
+
+    def test_fixture_response_flags_both_partial_years(self):
+        result = json.loads(process_crime_response(json.dumps(MONTHLY_RESPONSE), aggregate="yearly"))
+        years = result[PARTIAL_YEARS_KEY]["years"]
+        assert years["2023"]["months_covered"] == 3
+        assert years["2024"]["months_covered"] == 2

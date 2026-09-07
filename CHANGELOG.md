@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CI lint step now uses the `ruff` pinned in the `dev` dependency group via `uv run` instead of an unpinned `uvx ruff`, so local and CI lint results match
 
 ### Added
+- Yearly aggregation now adds a top-level `_partial_years` marker (note, months covered, from/to) whenever a year has fewer than 12 months of data, so a partial-year sum or rate average is never mistaken for an annual figure. Tool docstrings for the six aggregating tools mention the marker
 - `ruff` added to the `dev` dependency group
 - `tests/test_caching.py` covering cache hit/miss, error bypass, error-then-success recovery, and statistics for `ErrorAwareCachingMiddleware`
 

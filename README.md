@@ -21,7 +21,7 @@ Created for data journalists, researchers, and anyone interested in exploring US
   - Police employment, Law Enforcement Officers Killed and Assaulted (LEOKA), Law Enforcement Suicide Data Collection (LESDC), and use of force
   - Agency lookup, reference data, cache management, and spillover reading
 - **Geographic query levels** — national, state, and agency for most tools; some also support region (`get_police_employment`, `get_nibrs_estimation`) or agency-type / population-size breakdowns (`get_nibrs_estimation`) — all with automatic parameter validation
-- **Smart yearly aggregation** — monthly API data is automatically rolled up into yearly totals (sums for counts, averages for rates, last value for population), with an option for monthly granularity
+- **Smart yearly aggregation** — monthly API data is automatically rolled up into yearly totals (sums for counts, unweighted averages for rates, last value for population), with an option for monthly granularity. Years with fewer than 12 months of data are flagged in a `_partial_years` key so partial-year sums are never mistaken for annual totals
 - **Tiered disk-backed caching** — 90-day time-to-live (TTL) for stable data (trends, reference, summaries, NIBRS estimation), 30-day TTL for dynamic data (incidents, arrests, agency lookups), and 1-day TTL for the homepage summary (refresh dates change frequently). Transient errors (timeouts, HTTP 5xx, rate-limit responses) are never cached
 - **Spillover handling** — responses exceeding 128K characters are saved to disk with a preview returned, so large queries are never silently truncated
 - **Input validation** — date format/ordering checks, offense and bias code validation, and level-based parameter requirements with clear error messages
