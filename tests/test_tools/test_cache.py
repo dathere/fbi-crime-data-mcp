@@ -744,3 +744,83 @@ class TestCacheOSErrorPaths:
         r = await manage_cache("clear")
         data = json.loads(r)
         assert data["removed"] == 0
+
+
+class TestHitRateSessionStats:
+    """_hit_rate merges live middleware counters with persisted history."""
+
+    async def test_session_counters_merge_with_persisted(self, fake_cache, monkeypatch):
+        from fastmcp.server.middleware.caching import ResponseCachingMiddleware
+        from key_value.aio.stores.memory import MemoryStore
+        from key_value.aio.wrappers.statistics.wrapper import KVStoreCollectionStatistics
+
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        # Persisted history from a previous session
+        (fake_cache / "stats.json").write_text(json.dumps({"call_tool": {"hits": 10, "misses": 5}}))
+
+        # Live middleware: tools/call has traffic, tools/list is present but idle
+        mw = ResponseCachingMiddleware(cache_storage=MemoryStore())
+        busy = KVStoreCollectionStatistics()
+        busy.get.hit = 42
+        busy.get.miss = 7
+        idle = KVStoreCollectionStatistics()
+        mw._stats._statistics.collections["tools/call"] = busy
+        mw._stats._statistics.collections["tools/list"] = idle
+        monkeypatch.setattr(cache_mod.mcp, "middleware", [mw])
+
+        data = json.loads(await manage_cache("status"))
+        hit_rate = data["hit_rate"]
+
+        assert hit_rate["collections"]["call_tool"] == {
+            "hits": 52,
+            "misses": 12,
+            "total": 64,
+            "hit_rate_pct": 81.2,
+        }
+        # Idle collections contribute nothing and are not listed
+        assert "list_tools" not in hit_rate["collections"]
+        assert (hit_rate["hits"], hit_rate["misses"], hit_rate["total"]) == (52, 12, 64)
+
+    async def test_session_counters_without_persisted_history(self, fake_cache, monkeypatch):
+        from fastmcp.server.middleware.caching import ResponseCachingMiddleware
+        from key_value.aio.stores.memory import MemoryStore
+        from key_value.aio.wrappers.statistics.wrapper import KVStoreCollectionStatistics
+
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        mw = ResponseCachingMiddleware(cache_storage=MemoryStore())
+        col = KVStoreCollectionStatistics()
+        col.get.hit = 3
+        col.get.miss = 1
+        mw._stats._statistics.collections["tools/call"] = col
+        monkeypatch.setattr(cache_mod.mcp, "middleware", [mw])
+
+        data = json.loads(await manage_cache("status"))
+        assert data["hit_rate"]["collections"]["call_tool"]["hits"] == 3
+        assert data["hit_rate"]["collections"]["call_tool"]["misses"] == 1
+
+
+class TestInfoFileUnlinkOSError:
+    async def test_info_file_unlink_oserror_in_clear(self, fake_cache, monkeypatch):
+        """OSError unlinking the collection info file during a full clear is swallowed."""
+        import pathlib
+        from unittest.mock import patch
+
+        import fbi_crime_data_mcp.tools.cache as cache_mod
+
+        monkeypatch.setattr(cache_mod, "_SPILLOVER_DIR", fake_cache / "no_spillover")
+
+        original_unlink = pathlib.Path.unlink
+
+        def patched_unlink(self, *args, **kwargs):
+            if self.name.endswith("-info.json"):
+                raise OSError("cannot unlink info file")
+            return original_unlink(self, *args, **kwargs)
+
+        with patch.object(pathlib.Path, "unlink", patched_unlink):
+            data = json.loads(await manage_cache("clear"))
+
+        # Entries were still removed; only the info file survived
+        assert data["removed"] == 2
+        assert (fake_cache / "S_tools_call-abc123-info.json").exists()
