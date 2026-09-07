@@ -12,3 +12,4 @@ build/
 .env
 /docs/audits
 .coverage
+*.log
