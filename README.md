@@ -108,6 +108,8 @@ All data comes from the FBI's [Crime Data Explorer](https://cde.ucr.cjis.gov/) A
 
 The server includes a built-in rate limiter (1,000 req/hr). The DEMO_KEY limit is enforced API-side.
 
+For more info on the FBI's Crime Data API, see [https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/docApi](https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/docApi).
+
 ## Development
 
 ```bash
