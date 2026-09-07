@@ -135,18 +135,14 @@ class TestLiveSummarized:
         Unit tests only ever feed it hand-built fixtures, so this is the only
         place the yearly rollup and section-trimming meet the real response shape.
         """
-        data = unwrap(
-            await get_summarized_crime_data("V", "national", FROM_DATE, TO_DATE, ctx=live_ctx)
-        )
+        data = unwrap(await get_summarized_crime_data("V", "national", FROM_DATE, TO_DATE, ctx=live_ctx))
         assert isinstance(data, dict), f"expected a JSON object, got {type(data).__name__}"
 
         # Trimming
         assert "tooltips" not in data, "tooltips should have been trimmed"
         populations = data.get("populations")
         if isinstance(populations, dict):
-            assert "participated_population" not in populations, (
-                "participated_population should have been trimmed"
-            )
+            assert "participated_population" not in populations, "participated_population should have been trimmed"
 
         # Aggregation: monthly mm-yyyy keys collapsed into yyyy keys
         keys = collect_keys(data)
@@ -158,9 +154,7 @@ class TestLiveSummarized:
     async def test_monthly_aggregate_preserves_month_keys(self, live_ctx):
         """Counterpart to the above — proves the rollup is ours, not the API's."""
         data = unwrap(
-            await get_summarized_crime_data(
-                "V", "national", FROM_DATE, TO_DATE, aggregate="monthly", ctx=live_ctx
-            )
+            await get_summarized_crime_data("V", "national", FROM_DATE, TO_DATE, aggregate="monthly", ctx=live_ctx)
         )
         keys = collect_keys(data)
         assert {k for k in keys if MONTH_RE.match(k)}, (
@@ -171,9 +165,7 @@ class TestLiveSummarized:
 class TestLiveNibrs:
     async def test_national_counts(self, live_ctx):
         """A different response shape than the SRS summarized endpoint."""
-        data = unwrap(
-            await get_nibrs_data("13A", "national", FROM_DATE, TO_DATE, ctx=live_ctx)
-        )
+        data = unwrap(await get_nibrs_data("13A", "national", FROM_DATE, TO_DATE, ctx=live_ctx))
         assert isinstance(data, dict), f"expected a JSON object, got {type(data).__name__}"
         assert "tooltips" not in data, "tooltips should have been trimmed"
 
@@ -181,9 +173,7 @@ class TestLiveNibrs:
 class TestLiveAgency:
     async def test_by_state_with_name_filter(self, live_ctx):
         """Exercises filter_agencies_by_name against a real agency list."""
-        data = unwrap(
-            await lookup_agency("by_state", state="DE", name_filter="police", ctx=live_ctx)
-        )
+        data = unwrap(await lookup_agency("by_state", state="DE", name_filter="police", ctx=live_ctx))
 
         names = [
             agency.get("agency_name", "")
