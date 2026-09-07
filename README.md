@@ -119,8 +119,12 @@ uv sync
 # Run the server locally
 FBI_API_KEY=your-key uv run fbi-crime-data-mcp
 
-# Run tests
+# Run tests (offline by default — never hits the network)
 uv run pytest
+
+# Run integration tests against the live API.
+# DEMO_KEY works, but is capped at 30 requests per IP per hour.
+FBI_API_KEY=your-key uv run pytest -m integration
 ```
 
 ## License
