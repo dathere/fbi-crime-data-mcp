@@ -31,6 +31,6 @@ FBI_API_KEY=xxx uv run pytest -m integration        # integration tests (hits re
 - Tools return strings (JSON or error messages), never raise exceptions to the MCP client.
 - Date format varies by endpoint: `mm-yyyy` (most crime data), `yyyy` (PE, trends), or `year=YYYY` param (LEOKA, LESDC, UoF).
 - Most tools use a `level` param (national/state/agency) with conditional `state`/`ori` requirements.
-- API key is read from the `FBI_API_KEY` env var and sent as the `API_KEY` query parameter on every request.
+- API key is read from the `FBI_API_KEY` env var and sent as the `X-Api-Key` request header on every request, never in the URL.
 - Six monthly crime data tools (summarized, NIBRS, arrests, hate crime, homicide, property) default to `aggregate="yearly"` which sums actuals, averages rates, and takes last population value. Pass `aggregate="monthly"` for monthly granularity. Years with fewer than 12 months of data (range not Jan-Dec aligned, or months not yet published) are flagged in a top-level `_partial_years` key with a note, months covered, and from/to. For the five tools that accept a `data_type` param, aggregation only runs when `data_type="counts"` (gated by `effective_aggregate()`); `summarized` has no `data_type` because the SRS endpoint always returns counts and rates together, and per-key strategies (`sum`/`avg`/`last`) handle each appropriately.
 - `lookup_agency` supports `name_filter` for case-insensitive substring search on agency names (by_state and by_district lookups).

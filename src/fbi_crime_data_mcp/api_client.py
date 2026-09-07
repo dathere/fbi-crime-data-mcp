@@ -74,9 +74,10 @@ class AppContext:
         except httpx.TimeoutException:
             return "Error: Request timed out. The FBI API may be slow — try again."
         except httpx.HTTPError as e:
-            # Don't surface or log the raw exception: some httpx errors include
-            # the request URL, which carries the API_KEY query parameter. Log
-            # only the exception type so the key can't leak into log files.
+            # Don't surface or log the raw exception. The key travels in the
+            # X-Api-Key header rather than the URL, but httpx error messages
+            # can still include request details; logging only the exception
+            # type keeps anything sensitive out of log files.
             logger.warning("Network error connecting to FBI API: %s", type(e).__name__)
             return "Error: Network error connecting to FBI API. Check your connection and try again."
 
@@ -175,11 +176,13 @@ def _load_persisted_stats() -> dict[str, dict[str, int]]:
 async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
     """Manage the shared httpx client and rate limiter."""
     api_key = _get_api_key()
+    # The key goes in the X-Api-Key header (supported by api.data.gov) rather
+    # than the API_KEY query parameter so it never appears in request URLs:
+    # httpx debug logs, proxies, or any error message that echoes the URL.
     async with httpx.AsyncClient(
         base_url=BASE_URL,
-        params={"API_KEY": api_key},
         timeout=30.0,
-        headers={"Accept": "application/json"},
+        headers={"Accept": "application/json", "X-Api-Key": api_key},
     ) as client:
         try:
             yield AppContext(client=client)

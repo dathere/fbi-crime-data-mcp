@@ -77,9 +77,8 @@ async def live_ctx():
     """
     async with httpx.AsyncClient(
         base_url=BASE_URL,
-        params={"API_KEY": os.environ["FBI_API_KEY"]},
         timeout=30.0,
-        headers={"Accept": "application/json"},
+        headers={"Accept": "application/json", "X-Api-Key": os.environ["FBI_API_KEY"]},
     ) as client:
         yield _LiveContext(AppContext(client=client))
 

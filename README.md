@@ -97,6 +97,8 @@ FBI_API_KEY=your-key uvx fbi-crime-data-mcp
 
 When a tool response exceeds 128,000 characters, the full result is saved to `~/.cache/fbi-crime-data-mcp/spillover/` and a truncated preview is returned with the file path. To avoid this, narrow your query (shorter date range, specific state/agency).
 
+The preview, not the full payload, is what gets cached, so the cache and the spillover directory belong together. Clear both with `manage_cache action="clear"` rather than deleting the spillover directory by hand; otherwise cached previews point at files that no longer exist until the cache entry expires.
+
 ## Data Sources
 
 All data comes from the FBI's [Crime Data Explorer](https://cde.ucr.cjis.gov/) API, which provides Uniform Crime Reporting (UCR) data including both the Summary Reporting System (SRS) and the National Incident-Based Reporting System (NIBRS).
