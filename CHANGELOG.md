@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Security
 - API key is now sent in the `X-Api-Key` request header instead of the `API_KEY` query parameter, so it never appears in request URLs (httpx debug logs, proxies, or error messages that echo the URL)
 
+### Changed
+- HTTP 403 from the api.data.gov gateway now gets a dedicated branch in `api_get`. A missing, invalid, or disabled key returns the gateway's code and message plus a pointer to `FBI_API_KEY`; `OVER_RATE_LIMIT` sent as 403 reads the same as the 429 branch; anything else passes the gateway message through. Previously all three fell into the generic "Unexpected HTTP 403" branch with a raw body
+
 ### Fixed
 - Transient API errors (timeouts, network failures, HTTP 5xx/429, in-process rate-limit messages) are no longer cached. Tools return these as plain strings, and `ResponseCachingMiddleware` stored them for the full 30/90-day TTL, so a single blip was replayed for that argument set until the cache was cleared. New `ErrorAwareCachingMiddleware` (`caching.py`) skips writing results that start with `Error:` or `Rate limit reached`
 - CI lint step now uses the `ruff` pinned in the `dev` dependency group via `uv run` instead of an unpinned `uvx ruff`, so local and CI lint results match

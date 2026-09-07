@@ -164,6 +164,51 @@ class TestApiGet:
         result = await ctx.api_get("/test")
         assert "429" in result
 
+    @pytest.mark.parametrize("code", ["API_KEY_MISSING", "API_KEY_INVALID", "API_KEY_DISABLED"])
+    async def test_http_403_bad_key_is_actionable(self, mock_client, code):
+        client, mock = mock_client
+        mock.get("/test").respond(403, json={"error": {"code": code, "message": "Your API key is not valid."}})
+        ctx = AppContext(client=client)
+        result = await ctx.api_get("/test")
+        assert result.startswith("Error:")
+        assert code in result
+        assert "Your API key is not valid." in result
+        assert "FBI_API_KEY" in result
+
+    async def test_http_403_over_rate_limit_reads_as_rate_limit(self, mock_client):
+        # api.data.gov has sent OVER_RATE_LIMIT as 403 as well as 429; both
+        # must produce the same "rate limit exceeded" wording so callers (and
+        # the integration suite's quota skip) treat them alike.
+        client, mock = mock_client
+        mock.get("/test").respond(403, json={"error": {"code": "OVER_RATE_LIMIT", "message": "slow down"}})
+        ctx = AppContext(client=client)
+        result = await ctx.api_get("/test")
+        assert "rate limit exceeded" in result.lower()
+        assert "OVER_RATE_LIMIT" in result
+        assert "FBI_API_KEY" not in result
+
+    async def test_http_403_unknown_code_passes_message_through(self, mock_client):
+        client, mock = mock_client
+        mock.get("/test").respond(403, json={"error": {"code": "HTTPS_REQUIRED", "message": "use https"}})
+        ctx = AppContext(client=client)
+        result = await ctx.api_get("/test")
+        assert result == "Error: FBI API returned HTTP 403 HTTPS_REQUIRED: use https"
+
+    async def test_http_403_non_json_body(self, mock_client):
+        client, mock = mock_client
+        mock.get("/test").respond(403, text="Forbidden by proxy")
+        ctx = AppContext(client=client)
+        result = await ctx.api_get("/test")
+        assert result == "Error: FBI API returned HTTP 403: Forbidden by proxy"
+
+    async def test_http_403_json_without_error_object(self, mock_client):
+        client, mock = mock_client
+        mock.get("/test").respond(403, json={"detail": "nope"})
+        ctx = AppContext(client=client)
+        result = await ctx.api_get("/test")
+        assert result.startswith("Error: FBI API returned HTTP 403: ")
+        assert "nope" in result
+
     async def test_http_400_with_json_message(self, mock_client):
         client, mock = mock_client
         mock.get("/test").respond(400, json={"message": "bad param"})
