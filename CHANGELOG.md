@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.5.0] - 2026-09-07
 
 ### Security
 - API key is now sent in the `X-Api-Key` request header instead of the `API_KEY` query parameter, so it never appears in request URLs (httpx debug logs, proxies, or error messages that echo the URL)
@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - Transient API errors (timeouts, network failures, HTTP 5xx/429, in-process rate-limit messages) are no longer cached. Tools return these as plain strings, and `ResponseCachingMiddleware` stored them for the full 30/90-day TTL, so a single blip was replayed for that argument set until the cache was cleared. New `ErrorAwareCachingMiddleware` (`caching.py`) skips writing results that start with `Error:` or `Rate limit reached`
+- `fbi_crime_data_mcp.__version__` was stuck at `0.2.0`; it now matches the package version
 - CI lint step now uses the `ruff` pinned in the `dev` dependency group via `uv run` instead of an unpinned `uvx ruff`, so local and CI lint results match
 
 ### Added
