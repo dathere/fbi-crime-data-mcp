@@ -18,16 +18,23 @@ _POPULATION_KEYS = {"population"}
 # ``_pagination_group`` field so it is recognisable as ours, not the API's.
 PARTIAL_YEARS_KEY = "_partial_years"
 _PARTIAL_YEARS_NOTE = (
-    "Yearly values for these years are computed from the listed months only: counts are sums and "
-    "rates are unweighted averages of the months available, so they are NOT full-year figures. "
-    "Coverage may be short because the requested date range does not span January to December, "
-    "or because the FBI has not yet published the remaining months. Use a January-to-December "
-    "range for complete annual figures, or pass aggregate='monthly' to see the underlying months."
+    "Yearly values for these years are computed from fewer than 12 months in at least one series: "
+    "counts are sums and rates are unweighted averages of the months available, so they are NOT "
+    "full-year figures. Coverage may be short because the requested date range does not span "
+    "January to December, or because the FBI has not yet published the remaining months. Use a "
+    "January-to-December range for complete annual figures, or pass aggregate='monthly' to see "
+    "the underlying months. 'incomplete_series' is listed only when some series in the response "
+    "are complete and others are not."
 )
 
-# Per-year set of mm strings seen while collapsing monthly dicts. Threaded
-# through the aggregation walk so the coverage report reflects every section.
-_Coverage = dict[str, set[str]]
+# year -> series path ("offenses.rates.Agency Offenses") -> set of mm strings
+# seen while collapsing that series. Tracked per series, not per response,
+# so a complete population series cannot mask an incomplete rates series.
+_Coverage = dict[str, dict[str, set[str]]]
+
+
+def _new_coverage() -> _Coverage:
+    return defaultdict(lambda: defaultdict(set))
 
 
 def process_crime_response(raw_json: str, aggregate: str = "yearly") -> str:
@@ -52,7 +59,7 @@ def process_crime_response(raw_json: str, aggregate: str = "yearly") -> str:
     data = _trim_response(data)
 
     if aggregate == "yearly":
-        coverage: _Coverage = defaultdict(set)
+        coverage = _new_coverage()
         data = _aggregate_yearly(data, coverage)
         partial = _partial_years(coverage)
         if partial:
@@ -162,28 +169,45 @@ def _trim_response(data: dict) -> dict:
 def _aggregate_yearly(data: dict, coverage: _Coverage | None = None) -> dict:
     """Aggregate monthly mm-yyyy keyed time series into yearly values.
 
-    If *coverage* is given, every ``mm`` seen for each year is recorded in it.
+    If *coverage* is given, every ``mm`` seen per year is recorded in it,
+    keyed by the dotted path of the series it came from.
     """
     result = {}
     for key, value in data.items():
         if not isinstance(value, dict):
             result[key] = value
             continue
-        result[key] = _aggregate_section(value, _strategy_for_key(key), coverage)
+        result[key] = _aggregate_section(value, _strategy_for_key(key), coverage, (key,))
     return result
 
 
 def _partial_years(coverage: _Coverage) -> dict | None:
-    """Build the ``_partial_years`` marker, or None if every year has 12 months."""
+    """Build the ``_partial_years`` marker, or None if every series has 12 months in every year.
+
+    A year is flagged when *any* series in it has fewer than 12 months.
+    ``months_covered`` is the smallest coverage among the incomplete series and
+    ``from``/``to`` span the months those series have. ``incomplete_series`` is
+    included only when the incomplete series are a strict subset of all series
+    for that year; when every series is short (the usual case, a date range
+    that is not January-to-December) the counts alone say so.
+    """
     years = {}
     for year in sorted(coverage):
-        months = sorted(coverage[year])
-        if len(months) < 12:
-            years[year] = {
-                "months_covered": len(months),
-                "from": f"{months[0]}-{year}",
-                "to": f"{months[-1]}-{year}",
-            }
+        series = coverage[year]
+        incomplete = {path: months for path, months in series.items() if len(months) < 12}
+        if not incomplete:
+            continue
+        span = sorted(set().union(*incomplete.values()))
+        entry = {
+            "months_covered": min(len(m) for m in incomplete.values()),
+            "from": f"{span[0]}-{year}",
+            "to": f"{span[-1]}-{year}",
+            "series_incomplete": len(incomplete),
+            "series_total": len(series),
+        }
+        if len(incomplete) < len(series):
+            entry["incomplete_series"] = sorted(incomplete)
+        years[year] = entry
     if not years:
         return None
     return {"note": _PARTIAL_YEARS_NOTE, "years": years}
@@ -199,7 +223,12 @@ def _strategy_for_key(key: str) -> str:
     return "sum"
 
 
-def _aggregate_section(section: dict, parent_strategy: str, coverage: _Coverage | None = None) -> dict:
+def _aggregate_section(
+    section: dict,
+    parent_strategy: str,
+    coverage: _Coverage | None = None,
+    path: tuple[str, ...] = (),
+) -> dict:
     """Recursively walk a section and aggregate any mm-yyyy keyed dicts found.
 
     Strategy-inheritance invariant: while *parent_strategy* is ``"sum"`` (the
@@ -210,7 +239,7 @@ def _aggregate_section(section: dict, parent_strategy: str, coverage: _Coverage 
     so nested rate breakdowns stay averaged rather than reverting to summing.
     """
     if _is_monthly_dict(section):
-        return _collapse_monthly(section, parent_strategy, coverage)
+        return _collapse_monthly(section, parent_strategy, coverage, path)
 
     result = {}
     for key, value in section.items():
@@ -218,7 +247,7 @@ def _aggregate_section(section: dict, parent_strategy: str, coverage: _Coverage 
             result[key] = value
             continue
         strategy = _strategy_for_key(key) if parent_strategy == "sum" else parent_strategy
-        result[key] = _aggregate_section(value, strategy, coverage)
+        result[key] = _aggregate_section(value, strategy, coverage, (*path, key))
     return result
 
 
@@ -229,12 +258,19 @@ def _is_monthly_dict(d: dict) -> bool:
     return all(_MM_YYYY_RE.match(k) for k in d)
 
 
-def _collapse_monthly(monthly: dict, strategy: str, coverage: _Coverage | None = None) -> dict:
+def _collapse_monthly(
+    monthly: dict,
+    strategy: str,
+    coverage: _Coverage | None = None,
+    path: tuple[str, ...] = (),
+) -> dict:
     """Collapse mm-yyyy keyed values into yyyy keyed values.
 
-    Records each ``mm`` seen per year in *coverage* (if given) so the caller
-    can flag years with fewer than 12 months of data.
+    Records each ``mm`` seen per year in *coverage* (if given) under this
+    series' dotted *path* so the caller can flag years where any series has
+    fewer than 12 months of data.
     """
+    series_path = ".".join(path)
     years: dict[str, list[tuple[int, float | int | None]]] = defaultdict(list)
     for key, value in monthly.items():
         m = _MM_YYYY_RE.match(key)
@@ -243,7 +279,7 @@ def _collapse_monthly(monthly: dict, strategy: str, coverage: _Coverage | None =
         month_str, year = m.group(1), m.group(2)
         years[year].append((int(month_str), value))
         if coverage is not None:
-            coverage[year].add(month_str)
+            coverage[year][series_path].add(month_str)
 
     result = {}
     for year in sorted(years):

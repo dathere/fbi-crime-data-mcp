@@ -433,7 +433,15 @@ class TestPartialYearsMarker:
 
         marker = result[PARTIAL_YEARS_KEY]
         assert "note" in marker and "unweighted" in marker["note"]
-        assert marker["years"] == {"2025": {"months_covered": 3, "from": "01-2025", "to": "03-2025"}}
+        assert marker["years"] == {
+            "2025": {
+                "months_covered": 3,
+                "from": "01-2025",
+                "to": "03-2025",
+                "series_incomplete": 1,
+                "series_total": 1,
+            }
+        }
         # The yearly values themselves are unchanged
         assert result["offenses"]["actuals"]["Series"] == {"2024": 12, "2025": 3}
 
@@ -447,16 +455,70 @@ class TestPartialYearsMarker:
             "months_covered": 2,
             "from": "02-2024",
             "to": "11-2024",
+            "series_incomplete": 1,
+            "series_total": 1,
         }
 
-    def test_coverage_is_union_across_sections(self):
-        # rates only has Jan; population has all 12 → year is complete overall
+    def test_complete_series_cannot_mask_incomplete_one(self):
+        # rates only has Jan; population has all 12. The year must still be
+        # flagged, and the marker must say which series is short.
         data = {
             "offenses": {"rates": {"S": {"01-2024": 1.0}}},
             "populations": {"population": {"S": {f"{m:02d}-2024": 100 for m in range(1, 13)}}},
         }
         result = json.loads(process_crime_response(json.dumps(data), aggregate="yearly"))
-        assert PARTIAL_YEARS_KEY not in result
+        assert result[PARTIAL_YEARS_KEY]["years"]["2024"] == {
+            "months_covered": 1,
+            "from": "01-2024",
+            "to": "01-2024",
+            "series_incomplete": 1,
+            "series_total": 2,
+            "incomplete_series": ["offenses.rates.S"],
+        }
+
+    def test_months_covered_is_minimum_across_incomplete_series(self):
+        # Two short series with different coverage: report the worst, span the union
+        data = {
+            "offenses": {
+                "actuals": {
+                    "A": {"01-2024": 1, "02-2024": 1, "03-2024": 1},
+                    "B": {"06-2024": 1},
+                }
+            }
+        }
+        result = json.loads(process_crime_response(json.dumps(data), aggregate="yearly"))
+        entry = result[PARTIAL_YEARS_KEY]["years"]["2024"]
+        assert entry["months_covered"] == 1
+        assert (entry["from"], entry["to"]) == ("01-2024", "06-2024")
+        assert entry["series_incomplete"] == entry["series_total"] == 2
+        assert "incomplete_series" not in entry  # all short → counts suffice
+
+    def test_incomplete_series_listed_only_when_subset(self):
+        data = {
+            "offenses": {
+                "actuals": {
+                    "A": {f"{m:02d}-2024": 1 for m in range(1, 13)},
+                    "B": {f"{m:02d}-2024": 1 for m in range(1, 13)},
+                    "C": {"12-2024": 1},
+                }
+            }
+        }
+        result = json.loads(process_crime_response(json.dumps(data), aggregate="yearly"))
+        entry = result[PARTIAL_YEARS_KEY]["years"]["2024"]
+        assert entry["incomplete_series"] == ["offenses.actuals.C"]
+        assert (entry["series_incomplete"], entry["series_total"]) == (1, 3)
+
+    def test_partial_year_in_one_series_only_flags_that_year(self):
+        data = {
+            "offenses": {
+                "actuals": {
+                    "A": {f"{m:02d}-2024": 1 for m in range(1, 13)} | {"01-2025": 1},
+                    "B": {f"{m:02d}-2024": 1 for m in range(1, 13)},
+                }
+            }
+        }
+        result = json.loads(process_crime_response(json.dumps(data), aggregate="yearly"))
+        assert list(result[PARTIAL_YEARS_KEY]["years"]) == ["2025"]
 
     def test_null_months_still_count_as_covered(self):
         # A published-but-null month is coverage; only absent keys make a year partial
